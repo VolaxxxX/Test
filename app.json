@@ -4,14 +4,9 @@
     "slug": "poop-tracker",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
     "scheme": "pooptracker",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/images/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#FFF8E7"
-    },
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.coupleapp.pooptracker",
@@ -21,10 +16,6 @@
       }
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#FFF8E7"
-      },
       "package": "com.coupleapp.pooptracker",
       "permissions": [
         "ACCESS_FINE_LOCATION",
@@ -35,12 +26,10 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "output": "static"
     },
     "plugins": [
       "expo-router",
-      "expo-notifications",
       [
         "expo-location",
         {
