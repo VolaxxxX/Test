@@ -118,6 +118,7 @@ export default function HistoryScreen() {
             data={sessions}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
+            style={{ flex: 1 }}
             renderItem={({ item }) => (
               <SessionRow session={item} isMe={item.userId === userProfile?.uid} />
             )}

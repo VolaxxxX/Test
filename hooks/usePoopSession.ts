@@ -74,7 +74,7 @@ export function usePoopSession() {
 
   const startPoop = async () => {
     if (!userProfile || !coupleId) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     let locationData: ActiveSession['location'] | undefined;
     try {
@@ -108,7 +108,7 @@ export function usePoopSession() {
 
   const endPoop = async () => {
     if (!userProfile || !coupleId) return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
     const mySession = activeSessions[userProfile.uid];
     if (!mySession) return;
