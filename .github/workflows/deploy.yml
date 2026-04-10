@@ -25,14 +25,15 @@ jobs:
         uses: expo/expo-github-action@v8
         with:
           eas-version: latest
+          expo-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Create EAS project if needed
+      - name: Create or link EAS project
         run: eas init --force --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
       - name: Publish OTA update
-        run: eas update --branch main --message "Auto-deploy v${{ github.run_number }}" --non-interactive
+        run: eas update --branch main --message "v${{ github.run_number }}" --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

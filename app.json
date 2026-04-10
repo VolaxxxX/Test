@@ -38,6 +38,12 @@
         }
       ]
     ],
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
     "experiments": {
       "typedRoutes": true
     }
