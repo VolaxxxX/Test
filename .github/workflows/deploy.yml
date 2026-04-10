@@ -1,0 +1,30 @@
+name: Deploy PoopTracker
+
+on:
+  push:
+    branches:
+      - claude/cross-platform-mobile-app-yq4CQ
+
+jobs:
+  deploy:
+    name: Deploy to Expo
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Publish update to Expo
+        run: eas update --branch main --message "Auto-deploy" --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

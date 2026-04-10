@@ -2,6 +2,7 @@
   "expo": {
     "name": "PoopTracker",
     "slug": "poop-tracker",
+    "owner": "volaxxxx",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "pooptracker",
