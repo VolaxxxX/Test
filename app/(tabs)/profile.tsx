@@ -11,17 +11,22 @@ import {
 } from 'react-native';
 import { useAuth } from '@/lib/auth-context';
 import { Colors } from '@/constants/Colors';
+import { getT, POOP_EMOJIS } from '@/lib/i18n';
+import type { Language } from '@/lib/i18n';
 
 export default function ProfileScreen() {
-  const { userProfile, signOut } = useAuth();
+  const { userProfile, signOut, updateLanguage, updatePoopEmoji } = useAuth();
+
+  const language = userProfile?.language ?? 'fr';
+  const t = getT(language);
 
   const handleSignOut = () => {
     Alert.alert(
-      'Se déconnecter ?',
-      'Tu devras te reconnecter ensuite.',
+      t.confirmSignOut,
+      t.confirmSignOutBody,
       [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Se déconnecter', style: 'destructive', onPress: signOut },
+        { text: t.cancel, style: 'cancel' },
+        { text: t.signOut, style: 'destructive', onPress: signOut },
       ]
     );
   };
@@ -29,15 +34,20 @@ export default function ProfileScreen() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `💩 Rejoins-moi sur PoopTracker ! Mon code couple : ${userProfile?.coupleCode}\n\nTélécharge l'app et entre ce code !`,
+        message: `💩 PoopTracker — ${t.coupleCodeLabel}: ${userProfile?.coupleCode}`,
       });
     } catch {}
+  };
+
+  const handleToggleLanguage = async () => {
+    const next: Language = language === 'fr' ? 'en' : 'fr';
+    await updateLanguage(next);
   };
 
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>⚙️ Profil</Text>
+        <Text style={styles.title}>{t.profileTitle}</Text>
 
         {/* Avatar card */}
         <View style={styles.avatarCard}>
@@ -45,40 +55,67 @@ export default function ProfileScreen() {
           <Text style={styles.name}>{userProfile?.displayName}</Text>
           <Text style={styles.coupled}>
             {userProfile?.partnerId
-              ? `💞 Lié(e) avec ${userProfile.partnerName}`
-              : '🔗 Pas encore lié(e)'}
+              ? `💞 ${userProfile.partnerName}`
+              : t.notLinked}
           </Text>
+        </View>
+
+        {/* Language toggle */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>{t.langLabel}</Text>
+          <TouchableOpacity style={styles.langToggleBtn} onPress={handleToggleLanguage}>
+            <Text style={styles.langToggleText}>{t.switchLang}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Poop emoji picker */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>{t.poopEmojiLabel}</Text>
+          <View style={styles.poopEmojiGrid}>
+            {POOP_EMOJIS.map((e) => (
+              <TouchableOpacity
+                key={e}
+                style={[
+                  styles.poopEmojiBtn,
+                  (userProfile?.poopEmoji ?? '💩') === e && styles.poopEmojiBtnActive,
+                ]}
+                onPress={() => updatePoopEmoji(e)}
+              >
+                <Text style={styles.poopEmojiText}>{e}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {/* Couple code */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Mon code couple</Text>
+          <Text style={styles.sectionLabel}>{t.coupleCodeLabel}</Text>
           <View style={styles.codeBox}>
             <Text style={styles.codeValue}>{userProfile?.coupleCode}</Text>
           </View>
           <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
-            <Text style={styles.shareBtnText}>📤 Partager mon code</Text>
+            <Text style={styles.shareBtnText}>{t.shareMyCode}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Info */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Comment ça marche ?</Text>
+          <Text style={styles.sectionLabel}>{t.howItWorks}</Text>
           <View style={styles.infoCard}>
-            <InfoRow icon="1️⃣" text="Inscris-toi et partage ton code couple" />
-            <InfoRow icon="2️⃣" text="Ton/ta partenaire entre ton code dans l'app" />
-            <InfoRow icon="3️⃣" text="Appuie sur 💩 quand tu vas aux toilettes" />
-            <InfoRow icon="4️⃣" text="L'autre voit l'animation en temps réel !" />
-            <InfoRow icon="5️⃣" text="Appuie sur ✅ quand tu as fini" />
+            <InfoRow icon="1️⃣" text={t.step1} />
+            <InfoRow icon="2️⃣" text={t.step2} />
+            <InfoRow icon="3️⃣" text={t.step3} />
+            <InfoRow icon="4️⃣" text={t.step4} />
+            <InfoRow icon="5️⃣" text={t.step5} />
           </View>
         </View>
 
         {/* Sign out */}
         <TouchableOpacity style={styles.logoutBtn} onPress={handleSignOut}>
-          <Text style={styles.logoutText}>🚪 Se déconnecter</Text>
+          <Text style={styles.logoutText}>{t.signOut}</Text>
         </TouchableOpacity>
 
-        <Text style={styles.footer}>PoopTracker v1.0.0 💩</Text>
+        <Text style={styles.footer}>{t.appVersion}</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -131,6 +168,33 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: 10,
   },
+  langToggleBtn: {
+    backgroundColor: Colors.secondary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  langToggleText: { color: Colors.white, fontWeight: '700', fontSize: 14 },
+  poopEmojiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  poopEmojiBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: Colors.lightGray,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  poopEmojiBtnActive: {
+    backgroundColor: Colors.primaryLight,
+    borderColor: Colors.primary,
+  },
+  poopEmojiText: { fontSize: 20 },
   codeBox: {
     backgroundColor: Colors.accent,
     borderRadius: 16,

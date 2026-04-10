@@ -1,8 +1,13 @@
 import { View, Text } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Colors } from '@/constants/Colors';
+import { useAuth } from '@/lib/auth-context';
+import { getT } from '@/lib/i18n';
 
 export default function TabsLayout() {
+  const { userProfile } = useAuth();
+  const t = getT(userProfile?.language ?? 'fr');
+
   return (
     <Tabs
       screenOptions={{
@@ -26,7 +31,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Accueil',
+          title: t.tabHome,
           tabBarIcon: ({ focused }) => (
             <TabIcon icon="💩" focused={focused} />
           ),
@@ -35,7 +40,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="history"
         options={{
-          title: 'Historique',
+          title: t.tabHistory,
           tabBarIcon: ({ focused }) => (
             <TabIcon icon="📊" focused={focused} />
           ),
@@ -44,7 +49,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profil',
+          title: t.tabProfile,
           tabBarIcon: ({ focused }) => (
             <TabIcon icon="⚙️" focused={focused} />
           ),

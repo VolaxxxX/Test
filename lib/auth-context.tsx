@@ -7,16 +7,19 @@ import {
   User as FirebaseUser,
 } from 'firebase/auth';
 import { auth } from './firebase';
-import { createUser, getUser, User } from './database';
+import { createUser, getUser, updateUser, User } from './database';
+import type { Language } from './i18n';
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
   userProfile: User | null;
   loading: boolean;
-  signUp: (email: string, password: string, displayName: string, emoji: string) => Promise<void>;
+  signUp: (email: string, password: string, displayName: string, emoji: string, poopEmoji: string, language: Language) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  updateLanguage: (lang: Language) => Promise<void>;
+  updatePoopEmoji: (poopEmoji: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -45,12 +48,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, []);
 
-  const signUp = async (email: string, password: string, displayName: string, emoji: string) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    displayName: string,
+    emoji: string,
+    poopEmoji: string,
+    language: Language,
+  ) => {
     const { user } = await createUserWithEmailAndPassword(auth, email, password);
     const profile: Omit<User, 'uid'> = {
       displayName,
       emoji,
+      poopEmoji,
       coupleCode: generateCoupleCode(),
+      language,
     };
     await createUser(user.uid, profile);
     setUserProfile({ uid: user.uid, ...profile });
@@ -74,8 +86,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateLanguage = async (lang: Language) => {
+    if (!firebaseUser || !userProfile) return;
+    await updateUser(firebaseUser.uid, { language: lang });
+    setUserProfile({ ...userProfile, language: lang });
+  };
+
+  const updatePoopEmoji = async (poopEmoji: string) => {
+    if (!firebaseUser || !userProfile) return;
+    await updateUser(firebaseUser.uid, { poopEmoji });
+    setUserProfile({ ...userProfile, poopEmoji });
+  };
+
   return (
-    <AuthContext.Provider value={{ firebaseUser, userProfile, loading, signUp, signIn, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{
+      firebaseUser, userProfile, loading,
+      signUp, signIn, signOut, refreshProfile,
+      updateLanguage, updatePoopEmoji,
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -3,14 +3,18 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { PoopAnimation } from './PoopAnimation';
 import { ActiveSession } from '@/lib/database';
 import { Colors } from '@/constants/Colors';
+import { getT } from '@/lib/i18n';
+import type { Language } from '@/lib/i18n';
 
 interface Props {
   name: string;
   emoji: string;
+  poopEmoji?: string;
   isMe: boolean;
   active: boolean;
   session?: ActiveSession;
   elapsedSeconds?: number;
+  language?: Language;
   onStartPoop?: () => void;
   onEndPoop?: () => void;
 }
@@ -21,24 +25,37 @@ function formatDuration(seconds: number): string {
   return m > 0 ? `${m}min ${s.toString().padStart(2, '0')}s` : `${s}s`;
 }
 
-export function PartnerCard({ name, emoji, isMe, active, session, elapsedSeconds = 0, onStartPoop, onEndPoop }: Props) {
+export function PartnerCard({
+  name,
+  emoji,
+  poopEmoji = '💩',
+  isMe,
+  active,
+  session,
+  elapsedSeconds = 0,
+  language = 'fr',
+  onStartPoop,
+  onEndPoop,
+}: Props) {
+  const t = getT(language);
+
   return (
     <View style={[styles.card, active && styles.cardActive]}>
       {active && (
         <View style={styles.liveTag}>
           <View style={styles.liveDot} />
-          <Text style={styles.liveText}>EN COURS</Text>
+          <Text style={styles.liveText}>{t.liveLabel}</Text>
         </View>
       )}
 
-      <PoopAnimation active={active} size={isMe ? 70 : 56} />
+      <PoopAnimation active={active} size={isMe ? 70 : 56} poopEmoji={poopEmoji} />
 
       <Text style={styles.name}>{emoji} {name}</Text>
-      <Text style={styles.who}>{isMe ? 'Moi' : 'Mon amour'}</Text>
+      <Text style={styles.who}>{isMe ? t.me : t.myLove}</Text>
 
       {active ? (
         <View style={styles.timerBox}>
-          <Text style={styles.timerLabel}>🕐 En train de poop depuis</Text>
+          <Text style={styles.timerLabel}>{t.poopingSince}</Text>
           <Text style={styles.timerValue}>{formatDuration(elapsedSeconds)}</Text>
           {session?.location?.address && (
             <Text style={styles.location} numberOfLines={1}>
@@ -47,7 +64,7 @@ export function PartnerCard({ name, emoji, isMe, active, session, elapsedSeconds
           )}
         </View>
       ) : (
-        <Text style={styles.idle}>Pas aux toilettes 😌</Text>
+        <Text style={styles.idle}>{t.notPooping}</Text>
       )}
 
       {isMe && (
@@ -56,7 +73,7 @@ export function PartnerCard({ name, emoji, isMe, active, session, elapsedSeconds
           onPress={active ? onEndPoop : onStartPoop}
         >
           <Text style={styles.btnText}>
-            {active ? '✅ J\'ai fini !' : '💩 Je vais poop !'}
+            {active ? t.endBtn : t.startBtn}
           </Text>
         </TouchableOpacity>
       )}

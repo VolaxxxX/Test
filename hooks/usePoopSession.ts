@@ -8,14 +8,18 @@ import {
   subscribeToActiveSessions,
   getCoupleId,
   ActiveSession,
+  updateSessionReaction,
+  getUser,
 } from '@/lib/database';
 import { useAuth } from '@/lib/auth-context';
+import { sendPushNotification } from '@/lib/notifications';
 
 export function usePoopSession() {
   const { userProfile } = useAuth();
   const [activeSessions, setActiveSessions] = useState<Record<string, ActiveSession>>({});
   const [myElapsed, setMyElapsed] = useState(0);
   const [partnerElapsed, setPartnerElapsed] = useState(0);
+  const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
   const myTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const partnerTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -99,11 +103,27 @@ export function usePoopSession() {
       userId: userProfile.uid,
       userName: userProfile.displayName,
       userEmoji: userProfile.emoji,
+      userPoopEmoji: userProfile.poopEmoji ?? '💩',
       startTime: Date.now(),
       location: locationData,
     };
 
     await startPoopSession(coupleId, session);
+
+    // Notify partner
+    if (userProfile.partnerId) {
+      try {
+        const partner = await getUser(userProfile.partnerId);
+        if (partner?.pushToken) {
+          const isEN = (partner.language ?? 'fr') === 'en';
+          await sendPushNotification(
+            partner.pushToken,
+            '💩 PoopTracker',
+            `${userProfile.emoji} ${userProfile.displayName} ${isEN ? 'is on the toilet!' : 'est aux toilettes !'}`,
+          );
+        }
+      } catch {}
+    }
   };
 
   const endPoop = async () => {
@@ -117,20 +137,49 @@ export function usePoopSession() {
     const duration = Math.floor((endTime - mySession.startTime) / 1000);
     const today = new Date().toISOString().split('T')[0];
 
-    await Promise.all([
-      endPoopSession(coupleId, userProfile.uid),
+    const [sessionId] = await Promise.all([
       savePoopSession(coupleId, {
         userId: userProfile.uid,
         userName: userProfile.displayName,
         userEmoji: userProfile.emoji,
+        userPoopEmoji: userProfile.poopEmoji ?? '💩',
         startTime: mySession.startTime,
         endTime,
         duration,
         location: mySession.location,
         date: today,
       }),
+      endPoopSession(coupleId, userProfile.uid),
     ]);
+
+    setPendingSessionId(sessionId);
+
+    // Notify partner
+    if (userProfile.partnerId) {
+      try {
+        const partner = await getUser(userProfile.partnerId);
+        if (partner?.pushToken) {
+          const isEN = (partner.language ?? 'fr') === 'en';
+          await sendPushNotification(
+            partner.pushToken,
+            '✅ PoopTracker',
+            `${userProfile.emoji} ${userProfile.displayName} ${isEN ? 'is done! 🎉' : 'a fini ! 🎉'}`,
+          );
+        }
+      } catch {}
+    }
   };
+
+  const submitReaction = async (emoji: string) => {
+    if (pendingSessionId && coupleId) {
+      try {
+        await updateSessionReaction(coupleId, pendingSessionId, emoji);
+      } catch {}
+    }
+    setPendingSessionId(null);
+  };
+
+  const dismissReaction = () => setPendingSessionId(null);
 
   const mySession = userProfile ? activeSessions[userProfile.uid] : undefined;
   const partnerSession = userProfile?.partnerId ? activeSessions[userProfile.partnerId] : undefined;
@@ -140,7 +189,10 @@ export function usePoopSession() {
     partnerSession,
     myElapsed,
     partnerElapsed,
+    pendingSessionId,
     startPoop,
     endPoop,
+    submitReaction,
+    dismissReaction,
   };
 }

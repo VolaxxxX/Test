@@ -36,6 +36,12 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Pour enregistrer où tu étais quand tu as poop 💩"
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#8B4513"
+        }
       ]
     ],
     "runtimeVersion": {

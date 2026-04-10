@@ -5,9 +5,10 @@ import { Colors } from '@/constants/Colors';
 interface Props {
   active: boolean;
   size?: number;
+  poopEmoji?: string;
 }
 
-export function PoopAnimation({ active, size = 80 }: Props) {
+export function PoopAnimation({ active, size = 80, poopEmoji = '💩' }: Props) {
   const bounce = useRef(new Animated.Value(0)).current;
   const squish = useRef(new Animated.Value(1)).current;
   const sparkle1 = useRef(new Animated.Value(0)).current;
@@ -17,14 +18,12 @@ export function PoopAnimation({ active, size = 80 }: Props) {
 
   useEffect(() => {
     if (active) {
-      // Continuous bounce
       const bounceFx = Animated.loop(
         Animated.sequence([
           Animated.spring(bounce, { toValue: -14, useNativeDriver: true, tension: 80, friction: 5 }),
           Animated.spring(bounce, { toValue: 0, useNativeDriver: true, tension: 80, friction: 5 }),
         ])
       );
-      // Squish on land
       const squishFx = Animated.loop(
         Animated.sequence([
           Animated.timing(squish, { toValue: 1.15, duration: 120, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
@@ -33,7 +32,6 @@ export function PoopAnimation({ active, size = 80 }: Props) {
           Animated.delay(600),
         ])
       );
-      // Sparkles
       const sparkleFx = (anim: Animated.Value, delay: number) =>
         Animated.loop(
           Animated.sequence([
@@ -43,7 +41,6 @@ export function PoopAnimation({ active, size = 80 }: Props) {
             Animated.delay(600),
           ])
         );
-      // Glow pulse
       const glowFx = Animated.loop(
         Animated.sequence([
           Animated.timing(glow, { toValue: 1, duration: 700, useNativeDriver: true }),
@@ -88,7 +85,6 @@ export function PoopAnimation({ active, size = 80 }: Props) {
 
   return (
     <View style={[styles.wrapper, { width: size * 2, height: size * 2 }]}>
-      {/* Glow ring */}
       {active && (
         <Animated.View
           style={[
@@ -104,7 +100,6 @@ export function PoopAnimation({ active, size = 80 }: Props) {
         />
       )}
 
-      {/* Sparkles */}
       {active && (
         <>
           <Animated.Text style={[styles.sparkle, { opacity: sparkle1, top: '5%', right: '18%', fontSize: size * 0.28 }]}>✨</Animated.Text>
@@ -113,12 +108,11 @@ export function PoopAnimation({ active, size = 80 }: Props) {
         </>
       )}
 
-      {/* Poop emoji with bounce & squish */}
       <Animated.Text
         style={[
           styles.poop,
           {
-            fontSize: size,
+            fontSize: size * 0.8,
             transform: [
               { translateY: bounce },
               { scaleX: active ? squish.interpolate({ inputRange: [0.88, 1, 1.15], outputRange: [1.12, 1, 0.9] }) : 1 },
@@ -127,10 +121,9 @@ export function PoopAnimation({ active, size = 80 }: Props) {
           },
         ]}
       >
-        💩
+        {poopEmoji}
       </Animated.Text>
 
-      {/* Steam / smell lines when active */}
       {active && (
         <View style={styles.steamRow}>
           <Text style={[styles.steam, { marginRight: 6 }]}>💨</Text>

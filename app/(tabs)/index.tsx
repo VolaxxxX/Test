@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,27 +10,51 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { usePoopSession } from '@/hooks/usePoopSession';
 import { PartnerCard } from '@/components/PartnerCard';
+import { ReactionPicker } from '@/components/ReactionPicker';
 import { Colors } from '@/constants/Colors';
+import { getT, LOVE_MESSAGES } from '@/lib/i18n';
+import type { Language } from '@/lib/i18n';
 
 // Note: backgroundColor interpolation requires useNativeDriver:false
 
-function getTodayLabel(): string {
-  return new Intl.DateTimeFormat('fr-FR', {
+function getTodayLabel(language: Language): string {
+  const locale = language === 'fr' ? 'fr-FR' : 'en-US';
+  return new Intl.DateTimeFormat(locale, {
     weekday: 'long', day: 'numeric', month: 'long',
   }).format(new Date());
 }
 
 export default function HomeScreen() {
   const { userProfile } = useAuth();
-  const { mySession, partnerSession, myElapsed, partnerElapsed, startPoop, endPoop } = usePoopSession();
+  const {
+    mySession,
+    partnerSession,
+    myElapsed,
+    partnerElapsed,
+    startPoop,
+    endPoop,
+    pendingSessionId,
+    submitReaction,
+    dismissReaction,
+  } = usePoopSession();
+
+  const language = userProfile?.language ?? 'fr';
+  const t = getT(language);
 
   const bothPooping = !!mySession && !!partnerSession;
   const titleAnim = useRef(new Animated.Value(0)).current;
   const bannerLoopRef = useRef<Animated.CompositeAnimation | null>(null);
 
+  // Pick a random love message when partner is active and I'm not
+  const loveMessage = useMemo(() => {
+    if (!partnerSession || mySession) return '';
+    const msgs = LOVE_MESSAGES[language];
+    return msgs[Math.floor(Math.random() * msgs.length)];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!partnerSession, !!mySession, language]);
+
   useEffect(() => {
     if (bothPooping) {
-      // backgroundColor can NOT use useNativeDriver:true
       bannerLoopRef.current = Animated.loop(
         Animated.sequence([
           Animated.timing(titleAnim, { toValue: 1, duration: 500, useNativeDriver: false }),
@@ -55,38 +79,43 @@ export default function HomeScreen() {
 
   if (!userProfile) return null;
 
+  const partnerPoopEmoji = partnerSession?.userPoopEmoji ?? '💩';
+  const partnerEmoji = partnerSession?.userEmoji ?? '💞';
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.logo}>💩</Text>
+          <Text style={styles.logo}>{userProfile.poopEmoji ?? '💩'}</Text>
           <View>
             <Text style={styles.appName}>PoopTracker</Text>
-            <Text style={styles.date}>{getTodayLabel()}</Text>
+            <Text style={styles.date}>{getTodayLabel(language)}</Text>
           </View>
         </View>
 
         {/* Status banner */}
         {bothPooping ? (
           <Animated.View style={[styles.banner, { backgroundColor: bannerBg }]}>
-            <Text style={styles.bannerText}>💩💩 VOUS POOPEZ ENSEMBLE ! 💩💩</Text>
-            <Text style={styles.bannerSub}>C'est le moment de la complicité ! 😂</Text>
+            <Text style={styles.bannerText}>{t.bannerTogether}</Text>
+            <Text style={styles.bannerSub}>{t.bannerTogetherSub}</Text>
           </Animated.View>
         ) : mySession ? (
           <View style={[styles.banner, { backgroundColor: Colors.primary }]}>
-            <Text style={styles.bannerText}>💩 T'es aux toilettes !</Text>
-            <Text style={styles.bannerSub}>Bon courage... prends ton temps ! 😄</Text>
+            <Text style={styles.bannerText}>{t.bannerMe}</Text>
+            <Text style={styles.bannerSub}>{t.bannerMeSub}</Text>
           </View>
         ) : partnerSession ? (
           <View style={[styles.banner, { backgroundColor: Colors.primaryLight }]}>
-            <Text style={styles.bannerText}>💩 {userProfile.partnerName} est aux toilettes !</Text>
-            <Text style={styles.bannerSub}>Laisse-lui de l'espace 😂</Text>
+            <Text style={styles.bannerText}>
+              💩 {userProfile.partnerName} {language === 'fr' ? 'est aux toilettes !' : 'is on the toilet!'}
+            </Text>
+            <Text style={styles.bannerSub}>{loveMessage}</Text>
           </View>
         ) : (
           <View style={[styles.banner, { backgroundColor: Colors.success }]}>
-            <Text style={styles.bannerText}>😌 Tout le monde est libre !</Text>
-            <Text style={styles.bannerSub}>Les toilettes sont disponibles 🚽</Text>
+            <Text style={styles.bannerText}>{t.bannerFree}</Text>
+            <Text style={styles.bannerSub}>{t.bannerFreeSub}</Text>
           </View>
         )}
 
@@ -95,20 +124,24 @@ export default function HomeScreen() {
           <PartnerCard
             name={userProfile.displayName}
             emoji={userProfile.emoji}
+            poopEmoji={userProfile.poopEmoji ?? '💩'}
             isMe={true}
             active={!!mySession}
             session={mySession}
             elapsedSeconds={myElapsed}
+            language={language}
             onStartPoop={startPoop}
             onEndPoop={endPoop}
           />
           <PartnerCard
-            name={userProfile.partnerName ?? 'Partenaire'}
-            emoji="💞"
+            name={userProfile.partnerName ?? (language === 'fr' ? 'Partenaire' : 'Partner')}
+            emoji={partnerEmoji}
+            poopEmoji={partnerPoopEmoji}
             isMe={false}
             active={!!partnerSession}
             session={partnerSession}
             elapsedSeconds={partnerElapsed}
+            language={language}
           />
         </View>
 
@@ -116,13 +149,19 @@ export default function HomeScreen() {
         <View style={styles.tipBox}>
           <Text style={styles.tipText}>
             {mySession
-              ? '🧻 N\'oublie pas le papier !'
+              ? t.tipForgotPaper
               : partnerSession
-              ? '🤫 Chut, laisse-le/la tranquille...'
-              : '💡 Appuie sur le bouton quand t\'as besoin d\'y aller !'}
+              ? t.tipShh
+              : t.tipPress}
           </Text>
         </View>
       </ScrollView>
+
+      <ReactionPicker
+        visible={!!pendingSessionId}
+        onSelect={submitReaction}
+        onSkip={dismissReaction}
+      />
     </SafeAreaView>
   );
 }
@@ -174,6 +213,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
     opacity: 0.9,
+    textAlign: 'center',
   },
   cardsRow: {
     flexDirection: 'row',

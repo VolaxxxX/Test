@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/lib/auth-context';
 import { findUserByCode, pairCouple } from '@/lib/database';
 import { Colors } from '@/constants/Colors';
+import { getT } from '@/lib/i18n';
 
 export default function PairScreen() {
   const { userProfile, refreshProfile, signOut } = useAuth();
@@ -21,23 +22,26 @@ export default function PairScreen() {
   const [partnerCode, setPartnerCode] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const t = getT(userProfile?.language ?? 'fr');
+
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `💩 Rejoins-moi sur PoopTracker ! Mon code couple : ${userProfile?.coupleCode}\n\nTélécharge l'app et entre ce code pour qu'on soit liés !`,
-        title: 'Mon code PoopTracker',
+        message: `💩 PoopTracker — ${t.myCodeLabel}: ${userProfile?.coupleCode}`,
+        title: 'PoopTracker',
       });
     } catch {}
   };
 
   const handlePair = async () => {
+    if (!userProfile) return;
     const code = partnerCode.trim().toUpperCase();
     if (code.length !== 6) {
-      Alert.alert('Code invalide', 'Le code doit faire 6 caractères 🔢');
+      Alert.alert(t.errLabel, t.invalidCode);
       return;
     }
-    if (code === userProfile?.coupleCode) {
-      Alert.alert('Hé !', 'Tu ne peux pas te lier à toi-même 😄');
+    if (code === userProfile.coupleCode) {
+      Alert.alert('🙃', t.selfPair);
       return;
     }
 
@@ -45,18 +49,18 @@ export default function PairScreen() {
     try {
       const partner = await findUserByCode(code);
       if (!partner) {
-        Alert.alert('Introuvable', "Aucun compte avec ce code 🔍\nVérifie avec ton/ta partenaire !");
+        Alert.alert(t.notFoundLabel, t.codeNotFound);
         return;
       }
-      await pairCouple(userProfile!.uid, partner.uid, partner.displayName, userProfile!.displayName);
+      await pairCouple(userProfile.uid, partner.uid, partner.displayName, userProfile.displayName);
       await refreshProfile();
       Alert.alert(
-        '🎉 Couplé !',
-        `Tu es maintenant lié(e) à ${partner.emoji} ${partner.displayName} !`,
+        '🎉',
+        `${partner.emoji} ${partner.displayName}`,
         [{ text: "Let's go ! 💩", onPress: () => router.replace('/(tabs)') }]
       );
-    } catch (err) {
-      Alert.alert('Erreur', 'Impossible de se lier. Réessaie !');
+    } catch {
+      Alert.alert(t.errLabel, t.pairError);
     } finally {
       setLoading(false);
     }
@@ -65,35 +69,33 @@ export default function PairScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.logo}>💩💞</Text>
-      <Text style={styles.title}>Lier avec ton/ta partenaire</Text>
-      <Text style={styles.subtitle}>
-        Partagez vos codes pour vous connecter !
-      </Text>
+      <Text style={styles.title}>{t.pairTitle}</Text>
+      <Text style={styles.subtitle}>{t.pairSubtitle}</Text>
 
       {/* My code */}
       <View style={styles.myCodeCard}>
-        <Text style={styles.myCodeLabel}>Ton code à partager</Text>
+        <Text style={styles.myCodeLabel}>{t.myCodeLabel}</Text>
         <Text style={styles.myCodeValue}>{userProfile?.coupleCode}</Text>
         <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
-          <Text style={styles.shareBtnText}>📤 Partager mon code</Text>
+          <Text style={styles.shareBtnText}>{t.shareCodeBtn}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Divider */}
       <View style={styles.dividerRow}>
         <View style={styles.divider} />
-        <Text style={styles.dividerText}>ou entre le code de l'autre</Text>
+        <Text style={styles.dividerText}>{t.orEnterCode}</Text>
         <View style={styles.divider} />
       </View>
 
       {/* Partner code input */}
       <View style={styles.card}>
-        <Text style={styles.label}>Code de ton/ta partenaire</Text>
+        <Text style={styles.label}>{t.partnerCodeLabel}</Text>
         <TextInput
           style={styles.codeInput}
           value={partnerCode}
-          onChangeText={(t) => setPartnerCode(t.toUpperCase())}
-          placeholder="EX: AB3DE9"
+          onChangeText={(v) => setPartnerCode(v.toUpperCase())}
+          placeholder={t.partnerCodePlaceholder}
           placeholderTextColor={Colors.gray}
           maxLength={6}
           autoCapitalize="characters"
@@ -103,13 +105,13 @@ export default function PairScreen() {
           {loading ? (
             <ActivityIndicator color={Colors.white} />
           ) : (
-            <Text style={styles.btnText}>💞 Me lier à mon partenaire</Text>
+            <Text style={styles.btnText}>{t.linkBtn}</Text>
           )}
         </TouchableOpacity>
       </View>
 
       <TouchableOpacity onPress={signOut} style={styles.logoutBtn}>
-        <Text style={styles.logoutText}>Se déconnecter</Text>
+        <Text style={styles.logoutText}>{t.signOutLink}</Text>
       </TouchableOpacity>
     </ScrollView>
   );

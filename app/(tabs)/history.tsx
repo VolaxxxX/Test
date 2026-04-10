@@ -10,6 +10,9 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { subscribeToHistory, getCoupleId, PoopSession } from '@/lib/database';
 import { Colors } from '@/constants/Colors';
+import { WeeklyChart } from '@/components/WeeklyChart';
+import { getT } from '@/lib/i18n';
+import type { Language } from '@/lib/i18n';
 
 function formatDuration(seconds?: number): string {
   if (!seconds) return '--';
@@ -18,8 +21,9 @@ function formatDuration(seconds?: number): string {
   return m > 0 ? `${m}min ${s.toString().padStart(2, '0')}s` : `${s}s`;
 }
 
-function formatDate(ts: number): string {
-  return new Intl.DateTimeFormat('fr-FR', {
+function formatDate(ts: number, language: Language): string {
+  const locale = language === 'fr' ? 'fr-FR' : 'en-US';
+  return new Intl.DateTimeFormat(locale, {
     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
   }).format(new Date(ts));
 }
@@ -28,10 +32,66 @@ function getToday(): string {
   return new Date().toISOString().split('T')[0];
 }
 
+function computeStreak(sessions: PoopSession[], userId: string): number {
+  const dates = new Set(sessions.filter((s) => s.userId === userId).map((s) => s.date));
+  const today = getToday();
+  let streak = 0;
+  const cursor = new Date();
+
+  // If no poop today, start checking from yesterday
+  if (!dates.has(today)) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  for (let i = 0; i < 365; i++) {
+    const dateStr = cursor.toISOString().split('T')[0];
+    if (dates.has(dateStr)) {
+      streak++;
+      cursor.setDate(cursor.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+function computeRecord(sessions: PoopSession[], userId: string): number {
+  const mySessions = sessions.filter((s) => s.userId === userId);
+  const byDate: Record<string, number> = {};
+  for (const s of mySessions) {
+    byDate[s.date] = (byDate[s.date] ?? 0) + 1;
+  }
+  return Math.max(0, ...Object.values(byDate));
+}
+
+function getWeeklyData(
+  sessions: PoopSession[],
+  userId: string,
+  language: Language,
+): { data: number[]; dayLabels: string[] } {
+  const locale = language === 'fr' ? 'fr-FR' : 'en-US';
+  const today = new Date();
+  const data: number[] = [];
+  const dayLabels: string[] = [];
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    data.push(sessions.filter((s) => s.userId === userId && s.date === dateStr).length);
+    dayLabels.push(new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(d));
+  }
+
+  return { data, dayLabels };
+}
+
 export default function HistoryScreen() {
   const { userProfile } = useAuth();
   const [sessions, setSessions] = useState<PoopSession[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const language = userProfile?.language ?? 'fr';
+  const t = getT(language);
 
   const coupleId =
     userProfile?.uid && userProfile?.partnerId
@@ -48,27 +108,34 @@ export default function HistoryScreen() {
   }, [coupleId]);
 
   const today = getToday();
-  const myTodayCount = sessions.filter((s) => s.userId === userProfile?.uid && s.date === today).length;
-  const partnerTodayCount = sessions.filter((s) => s.userId === userProfile?.partnerId && s.date === today).length;
+  const myUid = userProfile?.uid ?? '';
+  const partnerUid = userProfile?.partnerId ?? '';
+
+  const myTodayCount = sessions.filter((s) => s.userId === myUid && s.date === today).length;
+  const partnerTodayCount = sessions.filter((s) => s.userId === partnerUid && s.date === today).length;
   const totalToday = myTodayCount + partnerTodayCount;
 
-  const myAllTime = sessions.filter((s) => s.userId === userProfile?.uid).length;
-  const partnerAllTime = sessions.filter((s) => s.userId === userProfile?.partnerId).length;
+  const myAllTime = sessions.filter((s) => s.userId === myUid).length;
+  const partnerAllTime = sessions.filter((s) => s.userId === partnerUid).length;
 
   const myAvgDuration =
-    sessions.filter((s) => s.userId === userProfile?.uid && s.duration).reduce((a, s) => a + (s.duration ?? 0), 0) /
+    sessions.filter((s) => s.userId === myUid && s.duration).reduce((a, s) => a + (s.duration ?? 0), 0) /
     (myAllTime || 1);
+
+  const myStreak = computeStreak(sessions, myUid);
+  const myRecord = computeRecord(sessions, myUid);
+  const { data: weekData, dayLabels } = getWeeklyData(sessions, myUid, language);
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        <Text style={styles.title}>📊 Statistiques</Text>
+        <Text style={styles.title}>{t.statsTitle}</Text>
 
         {/* Today counter */}
         <View style={styles.todayCard}>
-          <Text style={styles.todayLabel}>Aujourd'hui</Text>
+          <Text style={styles.todayLabel}>{t.todayLabel}</Text>
           <Text style={styles.todayCount}>{totalToday}</Text>
-          <Text style={styles.todaySubLabel}>poop au total 💩</Text>
+          <Text style={styles.todaySubLabel}>{t.poopCount}</Text>
           <View style={styles.todayRow}>
             <View style={styles.todayItem}>
               <Text style={styles.todayItemEmoji}>{userProfile?.emoji}</Text>
@@ -78,7 +145,7 @@ export default function HistoryScreen() {
             <View style={styles.todayDivider} />
             <View style={styles.todayItem}>
               <Text style={styles.todayItemEmoji}>💞</Text>
-              <Text style={styles.todayItemName}>{userProfile?.partnerName ?? 'Partenaire'}</Text>
+              <Text style={styles.todayItemName}>{userProfile?.partnerName ?? '—'}</Text>
               <Text style={styles.todayItemCount}>{partnerTodayCount} 💩</Text>
             </View>
           </View>
@@ -89,29 +156,48 @@ export default function HistoryScreen() {
           <View style={styles.statCard}>
             <Text style={styles.statIcon}>🏆</Text>
             <Text style={styles.statValue}>{myAllTime}</Text>
-            <Text style={styles.statLabel}>Mes poops</Text>
+            <Text style={styles.statLabel}>{t.myPoops}</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statIcon}>⏱️</Text>
             <Text style={styles.statValue}>{formatDuration(Math.round(myAvgDuration))}</Text>
-            <Text style={styles.statLabel}>Durée moy.</Text>
+            <Text style={styles.statLabel}>{t.avgDuration}</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statIcon}>💞</Text>
             <Text style={styles.statValue}>{partnerAllTime}</Text>
-            <Text style={styles.statLabel}>Ses poops</Text>
+            <Text style={styles.statLabel}>{t.partnerPoops}</Text>
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Historique récent</Text>
+        {/* Streak + Record row */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statIcon}>🔥</Text>
+            <Text style={styles.statValue}>{myStreak}</Text>
+            <Text style={styles.statLabel}>{t.daysLabel}</Text>
+            <Text style={styles.statSubLabel}>{t.streakLabel}</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statIcon}>📅</Text>
+            <Text style={styles.statValue}>{myRecord}</Text>
+            <Text style={styles.statLabel}>{t.maxPerDay}</Text>
+            <Text style={styles.statSubLabel}>{t.recordLabel}</Text>
+          </View>
+        </View>
+
+        {/* Weekly chart */}
+        <WeeklyChart data={weekData} dayLabels={dayLabels} />
+
+        <Text style={styles.sectionTitle}>{t.recentHistory}</Text>
 
         {loading ? (
           <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 40 }} />
         ) : sessions.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyEmoji}>🚽</Text>
-            <Text style={styles.emptyText}>Aucun poop enregistré pour l'instant !</Text>
-            <Text style={styles.emptySubtext}>Allez, qui sera le premier ? 😄</Text>
+            <Text style={styles.emptyText}>{t.noHistory}</Text>
+            <Text style={styles.emptySubtext}>{t.goFirst}</Text>
           </View>
         ) : (
           <FlatList
@@ -120,7 +206,7 @@ export default function HistoryScreen() {
             showsVerticalScrollIndicator={false}
             style={{ flex: 1 }}
             renderItem={({ item }) => (
-              <SessionRow session={item} isMe={item.userId === userProfile?.uid} />
+              <SessionRow session={item} isMe={item.userId === myUid} language={language} t={t} />
             )}
           />
         )}
@@ -129,24 +215,37 @@ export default function HistoryScreen() {
   );
 }
 
-function SessionRow({ session, isMe }: { session: PoopSession; isMe: boolean }) {
+function SessionRow({
+  session,
+  isMe,
+  language,
+  t,
+}: {
+  session: PoopSession;
+  isMe: boolean;
+  language: Language;
+  t: ReturnType<typeof getT>;
+}) {
   return (
     <View style={[styles.row, isMe ? styles.rowMe : styles.rowPartner]}>
       <View style={styles.rowLeft}>
-        <Text style={styles.rowEmoji}>{session.userEmoji}</Text>
+        <Text style={styles.rowEmoji}>{session.userPoopEmoji ?? session.userEmoji}</Text>
         <View>
           <Text style={styles.rowName}>{session.userName}</Text>
-          <Text style={styles.rowDate}>{formatDate(session.startTime)}</Text>
+          <Text style={styles.rowDate}>{formatDate(session.startTime, language)}</Text>
           {session.location?.address && (
             <Text style={styles.rowLocation} numberOfLines={1}>
               📍 {session.location.address}
             </Text>
           )}
+          {session.reaction && (
+            <Text style={styles.rowReaction}>{session.reaction}</Text>
+          )}
         </View>
       </View>
       <View style={styles.rowRight}>
         <Text style={styles.rowDuration}>{formatDuration(session.duration)}</Text>
-        <Text style={styles.rowDurationLabel}>durée</Text>
+        <Text style={styles.rowDurationLabel}>{t.durationLabel}</Text>
       </View>
     </View>
   );
@@ -183,7 +282,7 @@ const styles = StyleSheet.create({
   todayItemEmoji: { fontSize: 22 },
   todayItemName: { fontSize: 12, fontWeight: '600', color: Colors.secondary, marginTop: 2 },
   todayItemCount: { fontSize: 16, fontWeight: '800', color: Colors.secondary },
-  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
   statCard: {
     flex: 1,
     backgroundColor: Colors.cardBg,
@@ -199,6 +298,7 @@ const styles = StyleSheet.create({
   statIcon: { fontSize: 24, marginBottom: 4 },
   statValue: { fontSize: 18, fontWeight: '800', color: Colors.secondary },
   statLabel: { fontSize: 11, color: Colors.textLight, marginTop: 2, textAlign: 'center' },
+  statSubLabel: { fontSize: 10, color: Colors.primary, fontWeight: '700', marginTop: 1 },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
@@ -227,6 +327,7 @@ const styles = StyleSheet.create({
   rowName: { fontSize: 13, fontWeight: '700', color: Colors.secondary },
   rowDate: { fontSize: 11, color: Colors.textLight },
   rowLocation: { fontSize: 10, color: Colors.gray, maxWidth: 180 },
+  rowReaction: { fontSize: 16, marginTop: 2 },
   rowRight: { alignItems: 'flex-end' },
   rowDuration: { fontSize: 15, fontWeight: '800', color: Colors.primary },
   rowDurationLabel: { fontSize: 10, color: Colors.textLight },

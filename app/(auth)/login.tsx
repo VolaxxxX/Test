@@ -14,6 +14,8 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/lib/auth-context';
 import { Colors } from '@/constants/Colors';
+import { getT, POOP_EMOJIS } from '@/lib/i18n';
+import type { Language } from '@/lib/i18n';
 
 const EMOJIS = ['😊', '🤠', '🐻', '🦊', '🐱', '🐶', '🦁', '🐼', '🐸', '🐨'];
 
@@ -21,27 +23,31 @@ export default function LoginScreen() {
   const { signIn, signUp } = useAuth();
   const router = useRouter();
 
+  const [language, setLanguage] = useState<Language>('fr');
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [selectedEmoji, setSelectedEmoji] = useState('😊');
+  const [selectedPoopEmoji, setSelectedPoopEmoji] = useState('💩');
   const [loading, setLoading] = useState(false);
+
+  const t = getT(language);
 
   const handleSubmit = async () => {
     if (!email || !password) {
-      Alert.alert('Oups!', 'Remplis tous les champs 😅');
+      Alert.alert(t.oops, t.fillFields);
       return;
     }
     if (isSignUp && !displayName) {
-      Alert.alert('Oups!', 'Choisis un prénom ou surnom 😊');
+      Alert.alert(t.oops, t.chooseName);
       return;
     }
 
     setLoading(true);
     try {
       if (isSignUp) {
-        await signUp(email, password, displayName, selectedEmoji);
+        await signUp(email, password, displayName, selectedEmoji, selectedPoopEmoji, language);
         router.replace('/(auth)/pair');
       } else {
         await signIn(email, password);
@@ -49,12 +55,12 @@ export default function LoginScreen() {
       }
     } catch (err: any) {
       const msg =
-        err.code === 'auth/email-already-in-use' ? 'Email déjà utilisé 📧' :
-        err.code === 'auth/wrong-password' ? 'Mauvais mot de passe 🔐' :
-        err.code === 'auth/user-not-found' ? 'Compte introuvable 🔍' :
-        err.code === 'auth/weak-password' ? 'Mot de passe trop court (6+ caractères) 🔐' :
-        'Une erreur est survenue. Réessaie !';
-      Alert.alert('Erreur', msg);
+        err.code === 'auth/email-already-in-use' ? t.emailUsed :
+        err.code === 'auth/wrong-password' ? t.wrongPassword :
+        err.code === 'auth/user-not-found' ? t.userNotFound :
+        err.code === 'auth/weak-password' ? t.weakPassword :
+        t.genericError;
+      Alert.alert(t.errLabel, msg);
     } finally {
       setLoading(false);
     }
@@ -69,23 +75,33 @@ export default function LoginScreen() {
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Language toggle */}
+        <TouchableOpacity
+          style={styles.langBtn}
+          onPress={() => setLanguage(language === 'fr' ? 'en' : 'fr')}
+        >
+          <Text style={styles.langBtnText}>{t.langToggle}</Text>
+        </TouchableOpacity>
+
         <Text style={styles.logo}>💩</Text>
         <Text style={styles.title}>PoopTracker</Text>
-        <Text style={styles.subtitle}>L'app couple dont vous aviez besoin 😂</Text>
+        <Text style={styles.subtitle}>{t.appSubtitle}</Text>
 
         <View style={styles.card}>
           {isSignUp && (
             <>
-              <Text style={styles.label}>Ton prénom / surnom</Text>
+              <Text style={styles.label}>
+                {language === 'fr' ? 'Ton prénom / surnom' : 'Your name / nickname'}
+              </Text>
               <TextInput
                 style={styles.input}
                 value={displayName}
                 onChangeText={setDisplayName}
-                placeholder="ex: Chouchou 💕"
+                placeholder={t.nicknamePlaceholder}
                 placeholderTextColor={Colors.gray}
               />
 
-              <Text style={styles.label}>Ton emoji</Text>
+              <Text style={styles.label}>{t.yourEmoji}</Text>
               <View style={styles.emojiRow}>
                 {EMOJIS.map((e) => (
                   <TouchableOpacity
@@ -97,22 +113,35 @@ export default function LoginScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
+
+              <Text style={styles.label}>{t.yourPoopEmoji}</Text>
+              <View style={styles.emojiRow}>
+                {POOP_EMOJIS.map((e) => (
+                  <TouchableOpacity
+                    key={e}
+                    style={[styles.emojiBtn, selectedPoopEmoji === e && styles.emojiBtnActive]}
+                    onPress={() => setSelectedPoopEmoji(e)}
+                  >
+                    <Text style={styles.poopEmojiText}>{e}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </>
           )}
 
-          <Text style={styles.label}>Email</Text>
+          <Text style={styles.label}>{t.emailLabel}</Text>
           <TextInput
             style={styles.input}
             value={email}
             onChangeText={setEmail}
-            placeholder="ton@email.com"
+            placeholder="email@example.com"
             placeholderTextColor={Colors.gray}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
           />
 
-          <Text style={styles.label}>Mot de passe</Text>
+          <Text style={styles.label}>{t.passwordLabel}</Text>
           <TextInput
             style={styles.input}
             value={password}
@@ -127,14 +156,14 @@ export default function LoginScreen() {
               <ActivityIndicator color={Colors.white} />
             ) : (
               <Text style={styles.btnText}>
-                {isSignUp ? '🚀 Créer mon compte' : '🔓 Se connecter'}
+                {isSignUp ? t.createAccountBtn : t.signInBtn}
               </Text>
             )}
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)} style={styles.switchBtn}>
             <Text style={styles.switchText}>
-              {isSignUp ? 'Déjà un compte ? Se connecter' : "Pas encore de compte ? S'inscrire"}
+              {isSignUp ? t.switchToSignin : t.switchToSignup}
             </Text>
           </TouchableOpacity>
         </View>
@@ -152,6 +181,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 40,
   },
+  langBtn: {
+    alignSelf: 'flex-end',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: Colors.lightGray,
+    borderRadius: 20,
+    marginBottom: 16,
+  },
+  langBtnText: { fontSize: 13, fontWeight: '600', color: Colors.secondary },
   logo: { fontSize: 72, marginBottom: 8 },
   title: {
     fontSize: 32,
@@ -213,6 +251,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
   },
   emojiText: { fontSize: 22 },
+  poopEmojiText: { fontSize: 18 },
   btn: {
     backgroundColor: Colors.primary,
     borderRadius: 14,

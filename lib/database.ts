@@ -1,13 +1,17 @@
 import { ref, set, get, update, push, onValue, query, orderByChild, limitToLast } from 'firebase/database';
 import { db } from './firebase';
+import type { Language, PoopEmoji } from './i18n';
 
 export interface User {
   uid: string;
   displayName: string;
   emoji: string;
+  poopEmoji: string;
   coupleCode: string;
   partnerId?: string;
   partnerName?: string;
+  language: Language;
+  pushToken?: string;
 }
 
 export interface PoopSession {
@@ -15,21 +19,24 @@ export interface PoopSession {
   userId: string;
   userName: string;
   userEmoji: string;
+  userPoopEmoji: string;
   startTime: number;
   endTime?: number;
-  duration?: number; // seconds
+  duration?: number;
   location?: {
     latitude: number;
     longitude: number;
     address?: string;
   };
-  date: string; // YYYY-MM-DD
+  date: string;
+  reaction?: string;
 }
 
 export interface ActiveSession {
   userId: string;
   userName: string;
   userEmoji: string;
+  userPoopEmoji: string;
   startTime: number;
   location?: {
     latitude: number;
@@ -90,6 +97,10 @@ export async function savePoopSession(coupleId: string, session: Omit<PoopSessio
   const newRef = push(ref(db, `history/${coupleId}`));
   await set(newRef, { ...session, id: newRef.key });
   return newRef.key!;
+}
+
+export async function updateSessionReaction(coupleId: string, sessionId: string, reaction: string) {
+  await update(ref(db, `history/${coupleId}/${sessionId}`), { reaction });
 }
 
 export function subscribeToHistory(
