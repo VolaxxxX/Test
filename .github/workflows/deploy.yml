@@ -33,6 +33,9 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
+      - name: Test bundle (diagnose errors)
+        run: npx expo export --platform android --output-dir /tmp/export-test 2>&1 | head -100 || true
+
       - name: Publish OTA update
         run: eas update --branch main --message "v${{ github.run_number }}" --non-interactive
         env:
