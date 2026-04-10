@@ -51,16 +51,24 @@ export function PoopAnimation({ active, size = 80 }: Props) {
         ])
       );
 
+      const sparkle1Fx = sparkleFx(sparkle1, 0);
+      const sparkle2Fx = sparkleFx(sparkle2, 300);
+      const sparkle3Fx = sparkleFx(sparkle3, 600);
+
       bounceFx.start();
       squishFx.start();
-      sparkleFx(sparkle1, 0).start();
-      sparkleFx(sparkle2, 300).start();
-      sparkleFx(sparkle3, 600).start();
+      sparkle1Fx.start();
+      sparkle2Fx.start();
+      sparkle3Fx.start();
       glowFx.start();
 
       return () => {
         bounceFx.stop();
         squishFx.stop();
+        sparkle1Fx.stop();
+        sparkle2Fx.stop();
+        sparkle3Fx.stop();
+        glowFx.stop();
         bounce.setValue(0);
         squish.setValue(1);
         sparkle1.setValue(0);

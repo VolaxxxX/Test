@@ -1,3 +1,4 @@
+import { View, Text } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 
@@ -54,7 +55,6 @@ export default function TabsLayout() {
 }
 
 function TabIcon({ icon, focused }: { icon: string; focused: boolean }) {
-  const { Text, View } = require('react-native');
   return (
     <View style={{ alignItems: 'center', justifyContent: 'center' }}>
       <Text style={{ fontSize: focused ? 28 : 22, opacity: focused ? 1 : 0.5 }}>{icon}</Text>

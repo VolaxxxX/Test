@@ -12,6 +12,8 @@ import { usePoopSession } from '@/hooks/usePoopSession';
 import { PartnerCard } from '@/components/PartnerCard';
 import { Colors } from '@/constants/Colors';
 
+// Note: backgroundColor interpolation requires useNativeDriver:false
+
 function getTodayLabel(): string {
   return new Intl.DateTimeFormat('fr-FR', {
     weekday: 'long', day: 'numeric', month: 'long',
@@ -24,18 +26,26 @@ export default function HomeScreen() {
 
   const bothPooping = !!mySession && !!partnerSession;
   const titleAnim = useRef(new Animated.Value(0)).current;
+  const bannerLoopRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
     if (bothPooping) {
-      Animated.loop(
+      // backgroundColor can NOT use useNativeDriver:true
+      bannerLoopRef.current = Animated.loop(
         Animated.sequence([
-          Animated.timing(titleAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
-          Animated.timing(titleAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
+          Animated.timing(titleAnim, { toValue: 1, duration: 500, useNativeDriver: false }),
+          Animated.timing(titleAnim, { toValue: 0, duration: 500, useNativeDriver: false }),
         ])
-      ).start();
+      );
+      bannerLoopRef.current.start();
     } else {
+      bannerLoopRef.current?.stop();
+      bannerLoopRef.current = null;
       titleAnim.setValue(0);
     }
+    return () => {
+      bannerLoopRef.current?.stop();
+    };
   }, [bothPooping]);
 
   const bannerBg = titleAnim.interpolate({

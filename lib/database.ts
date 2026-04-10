@@ -1,4 +1,4 @@
-import { ref, set, get, update, push, onValue, off, serverTimestamp, query, orderByChild, limitToLast } from 'firebase/database';
+import { ref, set, get, update, push, onValue, query, orderByChild, limitToLast } from 'firebase/database';
 import { db } from './firebase';
 
 export interface User {
@@ -80,10 +80,9 @@ export function subscribeToActiveSessions(
   callback: (sessions: Record<string, ActiveSession>) => void
 ) {
   const r = ref(db, `activeSessions/${coupleId}`);
-  onValue(r, (snap) => {
+  return onValue(r, (snap) => {
     callback(snap.exists() ? snap.val() : {});
   });
-  return () => off(r);
 }
 
 // ── Poop history ───────────────────────────────────────────────────────
@@ -98,7 +97,7 @@ export function subscribeToHistory(
   callback: (sessions: PoopSession[]) => void
 ) {
   const r = query(ref(db, `history/${coupleId}`), orderByChild('startTime'), limitToLast(100));
-  onValue(r, (snap) => {
+  return onValue(r, (snap) => {
     if (!snap.exists()) {
       callback([]);
       return;
@@ -106,7 +105,6 @@ export function subscribeToHistory(
     const sessions: PoopSession[] = Object.values(snap.val()).reverse() as PoopSession[];
     callback(sessions);
   });
-  return () => off(r as any);
 }
 
 // ── Couple ID (sorted uid pair) ────────────────────────────────────────
