@@ -9,6 +9,8 @@ jobs:
   deploy:
     name: Deploy to Expo
     runs-on: ubuntu-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -21,22 +23,11 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Setup Expo + EAS
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          expo-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
 
       - name: Create or link EAS project
         run: eas init --force --non-interactive
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Test bundle (diagnose errors)
-        run: npx expo export --platform android --output-dir /tmp/export-test 2>&1 | head -100 || true
 
       - name: Publish OTA update
         run: eas update --branch main --message "v${{ github.run_number }}" --non-interactive
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
