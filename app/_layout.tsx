@@ -2,8 +2,11 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { registerForPushNotifications } from '@/lib/notifications';
+
+SplashScreen.preventAutoHideAsync();
 
 function NotificationRegistrar() {
   const { firebaseUser } = useAuth();
@@ -16,6 +19,10 @@ function NotificationRegistrar() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    SplashScreen.hideAsync();
+  }, []);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
