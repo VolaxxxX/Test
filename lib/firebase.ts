@@ -1,9 +1,8 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeAuth, getAuth, getReactNativePersistence } from 'firebase/auth';
 import { getDatabase } from 'firebase/database';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// 🔥 Replace these with your own Firebase project config
-// Go to: https://console.firebase.google.com → New project → Add app (Web) → copy config
 const firebaseConfig = {
   apiKey: 'AIzaSyC3cBhhX0DeidYOI8excl8x1IlXxF4-j7g',
   authDomain: 'pooptracker-16a25.firebaseapp.com',
@@ -14,7 +13,18 @@ const firebaseConfig = {
   appId: '1:636688170883:web:14d7684ac377ffccd940b6',
 };
 
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+
+// initializeAuth must only be called once; catch the error on hot reload
+let auth;
+try {
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage),
+  });
+} catch {
+  auth = getAuth(app);
+}
+
+export { auth };
 export const db = getDatabase(app);
 export default app;
