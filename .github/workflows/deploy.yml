@@ -30,4 +30,4 @@ jobs:
         run: eas init --force --non-interactive
 
       - name: Publish OTA update
-        run: eas update --branch main --message "v${{ github.run_number }}" --platform all --non-interactive
+        run: eas update --branch main --message "v${{ github.run_number }}" --non-interactive
