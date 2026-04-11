@@ -42,7 +42,8 @@
         {
           "color": "#8B4513"
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "runtimeVersion": {
       "policy": "sdkVersion"
