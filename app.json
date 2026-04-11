@@ -7,6 +7,7 @@
     "orientation": "portrait",
     "scheme": "pooptracker",
     "userInterfaceStyle": "light",
+    "platforms": ["ios", "android"],
     "newArchEnabled": false,
     "ios": {
       "supportsTablet": false,
@@ -24,10 +25,6 @@
         "VIBRATE",
         "RECEIVE_BOOT_COMPLETED"
       ]
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "static"
     },
     "plugins": [
       "expo-router",
