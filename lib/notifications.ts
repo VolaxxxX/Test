@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { ref, update } from 'firebase/database';
 import { db } from './firebase';
 
@@ -21,9 +22,12 @@ export async function registerForPushNotifications(uid: string): Promise<void> {
     }
     if (finalStatus !== 'granted') return;
 
-    const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: undefined, // uses app.json extra.eas.projectId if available
-    });
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ??
+      (Constants as any).easConfig?.projectId;
+    const tokenData = await Notifications.getExpoPushTokenAsync(
+      projectId ? { projectId } : {}
+    );
     const pushToken = tokenData.data;
 
     // Store token in Firebase

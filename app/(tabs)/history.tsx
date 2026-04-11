@@ -118,9 +118,10 @@ export default function HistoryScreen() {
   const myAllTime = sessions.filter((s) => s.userId === myUid).length;
   const partnerAllTime = sessions.filter((s) => s.userId === partnerUid).length;
 
-  const myAvgDuration =
-    sessions.filter((s) => s.userId === myUid && s.duration).reduce((a, s) => a + (s.duration ?? 0), 0) /
-    (myAllTime || 1);
+  const mySessionsWithDuration = sessions.filter((s) => s.userId === myUid && s.duration);
+  const myAvgDuration = mySessionsWithDuration.length > 0
+    ? mySessionsWithDuration.reduce((a, s) => a + (s.duration ?? 0), 0) / mySessionsWithDuration.length
+    : 0;
 
   const myStreak = computeStreak(sessions, myUid);
   const myRecord = computeRecord(sessions, myUid);
