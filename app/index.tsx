@@ -1,14 +1,16 @@
 import { useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useRootNavigationState } from 'expo-router';
 import { useAuth } from '@/lib/auth-context';
 import { Colors } from '@/constants/Colors';
 
 export default function Index() {
   const { firebaseUser, userProfile, loading } = useAuth();
   const router = useRouter();
+  const rootNavState = useRootNavigationState();
 
   useEffect(() => {
+    if (!rootNavState?.key) return; // Wait for navigation to be ready
     if (loading) return;
     if (!firebaseUser) {
       router.replace('/(auth)/login');
@@ -17,7 +19,7 @@ export default function Index() {
     } else {
       router.replace('/(tabs)');
     }
-  }, [loading, firebaseUser, userProfile]);
+  }, [rootNavState?.key, loading, firebaseUser, userProfile]);
 
   return (
     <View style={styles.container}>
