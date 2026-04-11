@@ -1,10 +1,9 @@
 import React from 'react';
-import { View, Text } from 'react-native';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-
-// Test if Firebase import itself crashes
 import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getDatabase } from 'firebase/database';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyC3cBhhX0DeidYOI8excl8x1IlXxF4-j7g',
@@ -16,7 +15,9 @@ const firebaseConfig = {
   appId: '1:636688170883:web:14d7684ac377ffccd940b6',
 };
 
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+const fbApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+const db = getDatabase(fbApp);
 
 export default function RootLayout() {
   return (
