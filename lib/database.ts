@@ -1,4 +1,4 @@
-import { ref, set, get, update, push, onValue, query, orderByChild, limitToLast } from 'firebase/database';
+import { ref, set, get, update, push, onValue, query, orderByChild, limitToLast, equalTo } from 'firebase/database';
 import { db } from './firebase';
 import type { Language, PoopEmoji } from './i18n';
 
@@ -61,16 +61,23 @@ export async function updateUser(uid: string, data: Partial<User>) {
 
 // ── Couple pairing ─────────────────────────────────────────────────────
 export async function findUserByCode(code: string): Promise<User | null> {
-  const snap = await get(ref(db, 'users'));
+  // Uses the .indexOn ["coupleCode"] rule in database.rules.json for efficiency.
+  const q = query(ref(db, 'users'), orderByChild('coupleCode'), equalTo(code));
+  const snap = await get(q);
   if (!snap.exists()) return null;
-  const users: Record<string, User> = snap.val();
-  const found = Object.values(users).find((u) => u.coupleCode === code);
-  return found ?? null;
+  const entries = Object.values(snap.val() as Record<string, User>);
+  return entries[0] ?? null;
 }
 
 export async function pairCouple(myUid: string, partnerUid: string, partnerName: string, myName: string) {
-  await update(ref(db, `users/${myUid}`), { partnerId: partnerUid, partnerName });
-  await update(ref(db, `users/${partnerUid}`), { partnerId: myUid, partnerName: myName });
+  // Single multi-location update: atomic in Firebase RTDB.
+  // If the write partially fails, neither side is updated.
+  await update(ref(db), {
+    [`users/${myUid}/partnerId`]: partnerUid,
+    [`users/${myUid}/partnerName`]: partnerName,
+    [`users/${partnerUid}/partnerId`]: myUid,
+    [`users/${partnerUid}/partnerName`]: myName,
+  });
 }
 
 // ── Active session (real-time status) ─────────────────────────────────

@@ -52,9 +52,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // in @firebase/auth/package.json) calls registerAuth("ReactNative")
       // automatically at module level — no manual call needed.
 
+      // AsyncStorage persistence: auth session survives app restarts.
+      // getReactNativePersistence is exported by the RN bundle.
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+
       let auth: any;
       try {
-        auth = fa.initializeAuth(app, { persistence: fa.inMemoryPersistence });
+        auth = fa.initializeAuth(app, {
+          persistence: fa.getReactNativePersistence(AsyncStorage),
+        });
       } catch {
         // Auth already initialised for this app instance (fast-refresh).
         auth = fa.getAuth(app);

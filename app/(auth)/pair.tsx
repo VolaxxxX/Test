@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,12 +17,21 @@ import { Colors } from '@/constants/Colors';
 import { getT } from '@/lib/i18n';
 
 export default function PairScreen() {
-  const { userProfile, refreshProfile, signOut } = useAuth();
+  const { userProfile, signOut } = useAuth();
   const router = useRouter();
   const [partnerCode, setPartnerCode] = useState('');
   const [loading, setLoading] = useState(false);
 
   const t = getT(userProfile?.language ?? 'fr');
+
+  // User B passive flow: when User A pairs with us, our partnerId is written
+  // to RTDB → subscribeToProfile fires → userProfile updates → navigate here.
+  const partnerId = userProfile?.partnerId;
+  useEffect(() => {
+    if (partnerId) {
+      router.replace('/(tabs)');
+    }
+  }, [partnerId]);
 
   const handleShare = async () => {
     try {
@@ -52,8 +61,18 @@ export default function PairScreen() {
         Alert.alert(t.notFoundLabel, t.codeNotFound);
         return;
       }
+      // Prevent overwriting an existing pairing on the partner's side.
+      if (partner.partnerId && partner.partnerId !== userProfile.uid) {
+        Alert.alert(
+          t.errLabel,
+          userProfile.language === 'fr'
+            ? "Ce compte est déjà lié à quelqu'un d'autre."
+            : 'This account is already linked with someone else.',
+        );
+        return;
+      }
       await pairCouple(userProfile.uid, partner.uid, partner.displayName, userProfile.displayName);
-      await refreshProfile();
+      // subscribeToProfile fires automatically — no manual refresh needed.
       Alert.alert(
         '🎉',
         `${partner.emoji} ${partner.displayName}`,
