@@ -81,12 +81,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // onValue fires immediately with the current DB value, then again
           // whenever the record changes (e.g. partner pairs with this user).
           let firstFire = true;
+
+          // Safety timeout: if the device starts fully offline, RTDB onValue
+          // never fires (no network → no data, no error callback). Without this,
+          // loading stays true forever and the app shows an infinite spinner.
+          const offlineTimeout = setTimeout(() => {
+            if (firstFire) {
+              firstFire = false;
+              setLoading(false);
+              // userProfile stays null → app/index.tsx routes to login or pair
+              // as appropriate. User can still use the app once connectivity resumes.
+            }
+          }, 10_000);
+
           profileUnsub = subscribeToProfile(
             user.uid,
             (profile) => {
               setUserProfile(profile);
               if (firstFire) {
                 firstFire = false;
+                clearTimeout(offlineTimeout);
                 setLoading(false);
                 // Backfill missing timezone for existing users
                 if (profile && !profile.timezone) {
@@ -97,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             },
             (_err) => {
               // RTDB permission error — still unblock the app.
-              if (firstFire) { firstFire = false; setLoading(false); }
+              if (firstFire) { firstFire = false; clearTimeout(offlineTimeout); setLoading(false); }
             },
           );
         } else {

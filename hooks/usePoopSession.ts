@@ -179,9 +179,7 @@ export function usePoopSession() {
       // Use user's local timezone for the date — critical for UTC+7 (Indonesia)
       const date = getLocalDateStr(userProfile.timezone);
 
-      // Sequential: save history FIRST, then clear active session.
-      // If we clear first and save fails → poop is lost with no retry possible.
-      // If we save first and clear fails → active session stays (harmless stale state).
+      // Save history first — if this fails, no data is lost and the user can retry.
       const sessionId = await savePoopSession(coupleId, {
         userId: userProfile.uid,
         userName: userProfile.displayName,
@@ -193,9 +191,20 @@ export function usePoopSession() {
         location: mySession.location,
         date,
       });
-      await endPoopSession(coupleId, userProfile.uid);
 
+      // Advance UI state immediately after save succeeds.
+      // This prevents a duplicate history entry: if endPoopSession fails below
+      // and the user taps "done" again, inFlightRef resets but the active session
+      // is cleared best-effort on the retry — save is NOT called a second time
+      // because the active session will be null after the first successful clear
+      // (or if it's stale, the duplicate guard would catch it).
       setPendingSessionId(sessionId);
+
+      // Clear active session — fire-and-forget. A failure here leaves a stale
+      // active-session indicator but the history entry is already saved and the
+      // reaction picker is already open. The stale indicator auto-disappears on
+      // next app open when endPoopSession retries successfully.
+      endPoopSession(coupleId, userProfile.uid).catch(() => {});
 
       // Notify partner
       if (userProfile.partnerId) {
