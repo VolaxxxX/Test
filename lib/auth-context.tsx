@@ -48,6 +48,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const fa = require('@firebase/auth');
       fbRef.current = fa;
 
+      // The browser-cjs bundle (loaded via Metro resolver) does NOT call
+      // registerAuth() automatically — unlike dist/rn/index.js which calls
+      // registerAuth("ReactNative") at line 145. Without this call,
+      // initializeAuth throws "Component auth has not been registered yet".
+      try { fa.registerAuth('ReactNative'); } catch { /* already registered */ }
+
       let auth: any;
       try {
         auth = fa.initializeAuth(app, { persistence: fa.inMemoryPersistence });
