@@ -1,4 +1,4 @@
-export const Colors = {
+export const LightColors = {
   background: '#FFF8E7',
   primary: '#C8825A',
   primaryLight: '#F0B080',
@@ -15,3 +15,25 @@ export const Colors = {
   cardBg: '#FFFDF5',
   shadow: '#C8825A33',
 };
+
+export const DarkColors: typeof LightColors = {
+  background: '#1A1210',
+  primary: '#D4956B',
+  primaryLight: '#3D2820',
+  secondary: '#F0D5C0',
+  accent: '#3D3010',
+  success: '#4CAF50',
+  danger: '#E74C3C',
+  white: '#FFFFFF',
+  lightGray: '#2A201A',
+  gray: '#6B5B4E',
+  darkGray: '#9A8070',
+  text: '#F0D5C0',
+  textLight: '#8C7B6E',
+  cardBg: '#241A14',
+  shadow: '#00000066',
+};
+
+// Default export kept for screens that don't need dynamic theming (auth/pair)
+export const Colors = LightColors;
+export type ColorScheme = typeof LightColors;

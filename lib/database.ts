@@ -12,6 +12,9 @@ export interface User {
   partnerName?: string;
   language: Language;
   pushToken?: string;
+  timezone?: string;
+  darkMode?: boolean;
+  partnerTimezone?: string;
 }
 
 export interface PoopSession {
@@ -69,14 +72,23 @@ export async function findUserByCode(code: string): Promise<User | null> {
   return entries[0] ?? null;
 }
 
-export async function pairCouple(myUid: string, partnerUid: string, partnerName: string, myName: string) {
+export async function pairCouple(
+  myUid: string,
+  partnerUid: string,
+  partnerName: string,
+  myName: string,
+  myTimezone: string,
+  partnerTimezone: string,
+) {
   // Single multi-location update: atomic in Firebase RTDB.
   // If the write partially fails, neither side is updated.
   await update(ref(db), {
     [`users/${myUid}/partnerId`]: partnerUid,
     [`users/${myUid}/partnerName`]: partnerName,
+    [`users/${myUid}/partnerTimezone`]: partnerTimezone,
     [`users/${partnerUid}/partnerId`]: myUid,
     [`users/${partnerUid}/partnerName`]: myName,
+    [`users/${partnerUid}/partnerTimezone`]: myTimezone,
   });
 }
 
@@ -122,6 +134,18 @@ export function subscribeToHistory(
     }
     const sessions: PoopSession[] = Object.values(snap.val()).reverse() as PoopSession[];
     callback(sessions);
+  });
+}
+
+export function subscribeToTodaySessions(
+  coupleId: string,
+  date: string,
+  callback: (sessions: PoopSession[]) => void,
+): () => void {
+  const q = query(ref(db, `history/${coupleId}`), orderByChild('date'), equalTo(date));
+  return onValue(q, (snap) => {
+    if (!snap.exists()) { callback([]); return; }
+    callback(Object.values(snap.val() as Record<string, PoopSession>));
   });
 }
 

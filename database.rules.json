@@ -11,7 +11,10 @@
     },
     "history": {
       ".read": "auth != null",
-      ".write": "auth != null"
+      ".write": "auth != null",
+      "$coupleId": {
+        ".indexOn": ["startTime", "date"]
+      }
     }
   }
 }

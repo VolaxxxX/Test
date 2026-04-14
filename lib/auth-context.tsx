@@ -18,6 +18,7 @@ interface AuthContextType {
   refreshProfile: () => Promise<void>;
   updateLanguage: (lang: Language) => Promise<void>;
   updatePoopEmoji: (poopEmoji: string) => Promise<void>;
+  updateDarkMode: (dark: boolean) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -84,7 +85,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             user.uid,
             (profile) => {
               setUserProfile(profile);
-              if (firstFire) { firstFire = false; setLoading(false); }
+              if (firstFire) {
+                firstFire = false;
+                setLoading(false);
+                // Backfill missing timezone for existing users
+                if (profile && !profile.timezone) {
+                  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                  updateUser(user.uid, { timezone: tz }).catch(() => {});
+                }
+              }
             },
             (_err) => {
               // RTDB permission error — still unblock the app.
@@ -130,7 +139,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       authRef.current, email, password,
     );
 
-    // 2. Write user profile to Realtime DB.
+    // 2. Auto-detect timezone
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    // 3. Write user profile to Realtime DB.
     //    If this fails (e.g. RTDB rules), delete the orphan auth account
     //    so the user can try again cleanly.
     const profile: Omit<User, 'uid'> = {
@@ -139,6 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       poopEmoji,
       coupleCode: generateCoupleCode(),
       language,
+      timezone,
     };
     try {
       await createUser(user.uid, profile);
@@ -199,11 +212,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUserProfile({ ...userProfile, poopEmoji });
   };
 
+  const updateDarkMode = async (dark: boolean) => {
+    if (!firebaseUser || !userProfile) return;
+    await updateUser(firebaseUser.uid, { darkMode: dark });
+    setUserProfile({ ...userProfile, darkMode: dark });
+  };
+
   return (
     <AuthContext.Provider value={{
       firebaseUser, userProfile, loading, authError,
       signUp, signIn, signOut, refreshProfile,
-      updateLanguage, updatePoopEmoji,
+      updateLanguage, updatePoopEmoji, updateDarkMode,
     }}>
       {children}
     </AuthContext.Provider>
