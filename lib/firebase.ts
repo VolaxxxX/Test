@@ -1,5 +1,4 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { initializeAuth, getAuth, inMemoryPersistence } from 'firebase/auth';
 import { getDatabase } from 'firebase/database';
 
 const firebaseConfig = {
@@ -14,13 +13,9 @@ const firebaseConfig = {
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-let auth: ReturnType<typeof getAuth>;
-try {
-  auth = initializeAuth(app, { persistence: inMemoryPersistence });
-} catch {
-  auth = getAuth(app);
-}
+// firebase/auth is intentionally NOT imported here.
+// It is loaded lazily inside AuthProvider (auth-context.tsx) to prevent
+// module-level crashes in Expo Go that produce a silent white screen.
 
-export { auth };
 export const db = getDatabase(app);
 export default app;
