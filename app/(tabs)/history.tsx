@@ -44,13 +44,14 @@ function getLocalToday(timezone?: string): string {
 }
 
 function computeStreak(sessions: PoopSession[], userId: string, timezone?: string): number {
+  const tz = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
   const dates = new Set(sessions.filter(s => s.userId === userId).map(s => s.date));
-  const today = getLocalToday(timezone);
+  const today = getLocalToday(tz);
   let streak = 0;
   const cursor = new Date();
   if (!dates.has(today)) cursor.setDate(cursor.getDate() - 1);
   for (let i = 0; i < 365; i++) {
-    const dateStr = cursor.toISOString().split('T')[0];
+    const dateStr = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(cursor);
     if (dates.has(dateStr)) { streak++; cursor.setDate(cursor.getDate() - 1); }
     else break;
   }
@@ -113,7 +114,7 @@ export default function HistoryScreen() {
     : null;
 
   useEffect(() => {
-    if (!coupleId) return;
+    if (!coupleId) { setLoading(false); return; }
     const unsub = subscribeToHistory(coupleId, (data) => {
       setSessions(data);
       setLoading(false);

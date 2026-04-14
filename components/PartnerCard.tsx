@@ -95,7 +95,7 @@ function makeStyles(c: ColorScheme) {
     },
     timerBox: {
       alignItems: 'center',
-      backgroundColor: c.accent + '40',
+      backgroundColor: c.lightGray,
       borderRadius: 14,
       padding: 10,
       width: '100%',
@@ -166,7 +166,7 @@ export function PartnerCard({
         </View>
       )}
 
-      <PoopAnimation active={active} size={isMe ? 70 : 56} poopEmoji={poopEmoji} />
+      <PoopAnimation active={active} size={isMe ? 70 : 56} poopEmoji={poopEmoji} glowColor={colors.accent} />
 
       <View style={styles.nameRow}>
         <Text style={styles.name}>{emoji} {name}</Text>

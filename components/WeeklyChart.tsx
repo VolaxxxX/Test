@@ -94,6 +94,7 @@ export function WeeklyChart({ data, dayLabels }: Props) {
               <View
                 style={[
                   styles.bar,
+                  { height: barHeight },
                   isToday ? styles.barPrimary : styles.barPrimaryLight,
                   val === 0 && styles.barEmpty,
                 ]}
