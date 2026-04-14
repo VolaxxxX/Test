@@ -71,7 +71,12 @@ export default function PairScreen() {
         );
         return;
       }
-      await pairCouple(userProfile.uid, partner.uid, partner.displayName, userProfile.displayName);
+      await pairCouple(
+        userProfile.uid, partner.uid,
+        partner.displayName, userProfile.displayName,
+        userProfile.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
+        partner.timezone ?? '',
+      );
       // subscribeToProfile fires automatically — no manual refresh needed.
       Alert.alert(
         '🎉',

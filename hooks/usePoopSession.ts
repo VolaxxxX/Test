@@ -6,8 +6,10 @@ import {
   endPoopSession,
   savePoopSession,
   subscribeToActiveSessions,
+  subscribeToTodaySessions,
   getCoupleId,
   ActiveSession,
+  PoopSession,
   updateSessionReaction,
   getUser,
 } from '@/lib/database';
@@ -17,6 +19,7 @@ import { sendPushNotification } from '@/lib/notifications';
 export function usePoopSession() {
   const { userProfile } = useAuth();
   const [activeSessions, setActiveSessions] = useState<Record<string, ActiveSession>>({});
+  const [todaySessions, setTodaySessions] = useState<PoopSession[]>([]);
   const [myElapsed, setMyElapsed] = useState(0);
   const [partnerElapsed, setPartnerElapsed] = useState(0);
   const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
@@ -27,11 +30,18 @@ export function usePoopSession() {
     ? getCoupleId(userProfile.uid, userProfile.partnerId)
     : null;
 
-  // Subscribe to real-time sessions
+  // Subscribe to real-time active sessions
   useEffect(() => {
     if (!coupleId) return;
     const unsub = subscribeToActiveSessions(coupleId, setActiveSessions);
     return unsub;
+  }, [coupleId]);
+
+  // Subscribe to today's completed sessions (for "who first" badge)
+  useEffect(() => {
+    if (!coupleId) return;
+    const today = new Date().toISOString().split('T')[0];
+    return subscribeToTodaySessions(coupleId, today, setTodaySessions);
   }, [coupleId]);
 
   // My timer
@@ -184,6 +194,10 @@ export function usePoopSession() {
   const mySession = userProfile ? activeSessions[userProfile.uid] : undefined;
   const partnerSession = userProfile?.partnerId ? activeSessions[userProfile.partnerId] : undefined;
 
+  const firstTodayUserId = todaySessions.length > 0
+    ? todaySessions.reduce((a, b) => a.startTime < b.startTime ? a : b).userId
+    : null;
+
   return {
     mySession,
     partnerSession,
@@ -194,5 +208,6 @@ export function usePoopSession() {
     endPoop,
     submitReaction,
     dismissReaction,
+    firstTodayUserId,
   };
 }

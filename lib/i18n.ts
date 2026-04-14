@@ -118,6 +118,21 @@ const fr = {
   switchLang: '🇬🇧 Switch to English',
   poopEmojiLabel: 'Mon emoji caca',
   appVersion: 'PoopTracker v1.0.0 💩',
+  // Dark mode
+  darkModeLabel: 'Mode sombre',
+  darkModeOn: '🌙 Activé',
+  darkModeOff: '☀️ Désactivé',
+  // Couple streak
+  coupleStreakLabel: 'Streak couple',
+  bothDays: 'jours ensemble',
+  // First today
+  firstTodayBadge: '🥇 Premier !',
+  // Timezone
+  myTime: 'Mon heure',
+  partnerTime: 'Son heure',
+  // Partner stats labels
+  partnerAvgDuration: 'Durée moy. (eux)',
+  partnerStreakLabel: 'Streak (eux)',
   // Errors
   oops: 'Oups!',
   fillFields: 'Remplis tous les champs 😅',
@@ -218,6 +233,21 @@ const en: typeof fr = {
   switchLang: '🇫🇷 Passer en français',
   poopEmojiLabel: 'My poop emoji',
   appVersion: 'PoopTracker v1.0.0 💩',
+  // Dark mode
+  darkModeLabel: 'Dark mode',
+  darkModeOn: '🌙 Enabled',
+  darkModeOff: '☀️ Disabled',
+  // Couple streak
+  coupleStreakLabel: 'Couple streak',
+  bothDays: 'days together',
+  // First today
+  firstTodayBadge: '🥇 First!',
+  // Timezone
+  myTime: 'My time',
+  partnerTime: 'Their time',
+  // Partner stats labels
+  partnerAvgDuration: 'Avg. time (them)',
+  partnerStreakLabel: 'Streak (them)',
   // Errors
   oops: 'Oops!',
   fillFields: 'Please fill all fields 😅',

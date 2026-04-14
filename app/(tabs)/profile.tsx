@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,12 +10,146 @@ import {
   ScrollView,
 } from 'react-native';
 import { useAuth } from '@/lib/auth-context';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/lib/useColors';
 import { getT, POOP_EMOJIS } from '@/lib/i18n';
 import type { Language } from '@/lib/i18n';
+import type { ColorScheme } from '@/constants/Colors';
+
+function makeStyles(c: ColorScheme) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: c.background },
+    container: {
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 40,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: '800',
+      color: c.secondary,
+      marginBottom: 20,
+      paddingTop: 8,
+    },
+    avatarCard: {
+      backgroundColor: c.cardBg,
+      borderRadius: 24,
+      padding: 28,
+      alignItems: 'center',
+      marginBottom: 20,
+      shadowColor: c.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 12,
+      elevation: 3,
+    },
+    avatar: { fontSize: 72, marginBottom: 10 },
+    name: { fontSize: 24, fontWeight: '800', color: c.secondary, marginBottom: 4 },
+    coupled: { fontSize: 14, color: c.primary, fontWeight: '600' },
+    section: { marginBottom: 20 },
+    sectionLabel: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: c.textLight,
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+      marginBottom: 10,
+    },
+    langToggleBtn: {
+      backgroundColor: c.secondary,
+      borderRadius: 12,
+      paddingVertical: 12,
+      alignItems: 'center',
+    },
+    langToggleText: { color: c.white, fontWeight: '700', fontSize: 14 },
+    poopEmojiGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+    },
+    poopEmojiBtn: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: c.lightGray,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 2,
+      borderColor: 'transparent',
+    },
+    poopEmojiBtnActive: {
+      backgroundColor: c.primaryLight,
+      borderColor: c.primary,
+    },
+    poopEmojiText: { fontSize: 20 },
+    codeBox: {
+      backgroundColor: c.accent,
+      borderRadius: 16,
+      padding: 20,
+      alignItems: 'center',
+      marginBottom: 10,
+    },
+    codeValue: {
+      fontSize: 36,
+      fontWeight: '900',
+      color: c.secondary,
+      letterSpacing: 8,
+    },
+    shareBtn: {
+      backgroundColor: c.secondary,
+      borderRadius: 12,
+      paddingVertical: 12,
+      alignItems: 'center',
+    },
+    shareBtnText: { color: c.white, fontWeight: '700', fontSize: 14 },
+    infoCard: {
+      backgroundColor: c.cardBg,
+      borderRadius: 16,
+      padding: 16,
+      gap: 10,
+      shadowColor: c.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+    infoIcon: { fontSize: 18, width: 26 },
+    infoText: { fontSize: 13, color: c.text, flex: 1, lineHeight: 20 },
+    logoutBtn: {
+      backgroundColor: c.lightGray,
+      borderRadius: 14,
+      paddingVertical: 14,
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    logoutText: { color: c.danger, fontWeight: '700', fontSize: 15 },
+    footer: {
+      textAlign: 'center',
+      color: c.gray,
+      fontSize: 12,
+      marginTop: 8,
+    },
+    darkModeBtn: {
+      borderRadius: 12,
+      paddingVertical: 12,
+      alignItems: 'center',
+    },
+    darkModeBtnText: {
+      fontWeight: '700',
+      fontSize: 14,
+    },
+    tzValue: {
+      fontSize: 14,
+      color: c.text,
+      fontWeight: '500',
+    },
+  });
+}
 
 export default function ProfileScreen() {
-  const { userProfile, signOut, updateLanguage, updatePoopEmoji } = useAuth();
+  const { userProfile, signOut, updateLanguage, updatePoopEmoji, updateDarkMode } = useAuth();
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const language = userProfile?.language ?? 'fr';
   const t = getT(language);
@@ -68,6 +202,27 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Dark mode toggle */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>{t.darkModeLabel}</Text>
+          <TouchableOpacity
+            style={[styles.darkModeBtn, { backgroundColor: userProfile?.darkMode ? colors.primary : colors.lightGray }]}
+            onPress={() => updateDarkMode(!(userProfile?.darkMode ?? false))}
+          >
+            <Text style={[styles.darkModeBtnText, { color: userProfile?.darkMode ? colors.white : colors.secondary }]}>
+              {userProfile?.darkMode ? t.darkModeOn : t.darkModeOff}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Timezone info */}
+        {userProfile?.timezone ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>{t.myTime}</Text>
+            <Text style={styles.tzValue}>{userProfile.timezone}</Text>
+          </View>
+        ) : null}
+
         {/* Poop emoji picker */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>{t.poopEmojiLabel}</Text>
@@ -102,11 +257,11 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>{t.howItWorks}</Text>
           <View style={styles.infoCard}>
-            <InfoRow icon="1️⃣" text={t.step1} />
-            <InfoRow icon="2️⃣" text={t.step2} />
-            <InfoRow icon="3️⃣" text={t.step3} />
-            <InfoRow icon="4️⃣" text={t.step4} />
-            <InfoRow icon="5️⃣" text={t.step5} />
+            <InfoRow icon="1️⃣" text={t.step1} styles={styles} />
+            <InfoRow icon="2️⃣" text={t.step2} styles={styles} />
+            <InfoRow icon="3️⃣" text={t.step3} styles={styles} />
+            <InfoRow icon="4️⃣" text={t.step4} styles={styles} />
+            <InfoRow icon="5️⃣" text={t.step5} styles={styles} />
           </View>
         </View>
 
@@ -121,7 +276,7 @@ export default function ProfileScreen() {
   );
 }
 
-function InfoRow({ icon, text }: { icon: string; text: string }) {
+function InfoRow({ icon, text, styles }: { icon: string; text: string; styles: ReturnType<typeof makeStyles> }) {
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoIcon}>{icon}</Text>
@@ -129,118 +284,3 @@ function InfoRow({ icon, text }: { icon: string; text: string }) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
-  container: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 40,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: Colors.secondary,
-    marginBottom: 20,
-    paddingTop: 8,
-  },
-  avatarCard: {
-    backgroundColor: Colors.cardBg,
-    borderRadius: 24,
-    padding: 28,
-    alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  avatar: { fontSize: 72, marginBottom: 10 },
-  name: { fontSize: 24, fontWeight: '800', color: Colors.secondary, marginBottom: 4 },
-  coupled: { fontSize: 14, color: Colors.primary, fontWeight: '600' },
-  section: { marginBottom: 20 },
-  sectionLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.textLight,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 10,
-  },
-  langToggleBtn: {
-    backgroundColor: Colors.secondary,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  langToggleText: { color: Colors.white, fontWeight: '700', fontSize: 14 },
-  poopEmojiGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  poopEmojiBtn: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: Colors.lightGray,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  poopEmojiBtnActive: {
-    backgroundColor: Colors.primaryLight,
-    borderColor: Colors.primary,
-  },
-  poopEmojiText: { fontSize: 20 },
-  codeBox: {
-    backgroundColor: Colors.accent,
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  codeValue: {
-    fontSize: 36,
-    fontWeight: '900',
-    color: Colors.secondary,
-    letterSpacing: 8,
-  },
-  shareBtn: {
-    backgroundColor: Colors.secondary,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  shareBtnText: { color: Colors.white, fontWeight: '700', fontSize: 14 },
-  infoCard: {
-    backgroundColor: Colors.cardBg,
-    borderRadius: 16,
-    padding: 16,
-    gap: 10,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  infoIcon: { fontSize: 18, width: 26 },
-  infoText: { fontSize: 13, color: Colors.text, flex: 1, lineHeight: 20 },
-  logoutBtn: {
-    backgroundColor: Colors.lightGray,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  logoutText: { color: Colors.danger, fontWeight: '700', fontSize: 15 },
-  footer: {
-    textAlign: 'center',
-    color: Colors.gray,
-    fontSize: 12,
-    marginTop: 8,
-  },
-});

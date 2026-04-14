@@ -1,11 +1,12 @@
 import { View, Text } from 'react-native';
 import { Tabs } from 'expo-router';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/lib/useColors';
 import { useAuth } from '@/lib/auth-context';
 import { getT } from '@/lib/i18n';
 
 export default function TabsLayout() {
   const { userProfile } = useAuth();
+  const colors = useColors();
   const t = getT(userProfile?.language ?? 'fr');
 
   return (
@@ -13,7 +14,7 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: Colors.cardBg,
+          backgroundColor: colors.cardBg,
           borderTopWidth: 0,
           elevation: 12,
           shadowColor: '#000',
@@ -23,8 +24,8 @@ export default function TabsLayout() {
           height: 72,
           paddingBottom: 12,
         },
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.gray,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.gray,
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}
     >
