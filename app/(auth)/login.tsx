@@ -20,7 +20,7 @@ import type { Language } from '@/lib/i18n';
 const EMOJIS = ['😊', '🤠', '🐻', '🦊', '🐱', '🐶', '🦁', '🐼', '🐸', '🐨'];
 
 export default function LoginScreen() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, authError } = useAuth();
   const router = useRouter();
 
   const [language, setLanguage] = useState<Language>('fr');
@@ -54,12 +54,21 @@ export default function LoginScreen() {
         router.replace('/');
       }
     } catch (err: any) {
+      const code: string = err?.code ?? '';
       const msg =
-        err.code === 'auth/email-already-in-use' ? t.emailUsed :
-        err.code === 'auth/wrong-password' ? t.wrongPassword :
-        err.code === 'auth/user-not-found' ? t.userNotFound :
-        err.code === 'auth/weak-password' ? t.weakPassword :
-        t.genericError;
+        code === 'auth/email-already-in-use'   ? t.emailUsed :
+        // Firebase v9 uses 'wrong-password'; v10+ may use 'invalid-credential'
+        code === 'auth/wrong-password' ||
+        code === 'auth/invalid-credential'      ? t.wrongPassword :
+        code === 'auth/user-not-found'          ? t.userNotFound :
+        code === 'auth/weak-password'           ? t.weakPassword :
+        code === 'auth/invalid-email'           ? (language === 'fr' ? 'Adresse email invalide.' : 'Invalid email address.') :
+        code === 'auth/operation-not-allowed'   ? (language === 'fr' ? 'Connexion email désactivée. Active-la dans la Firebase Console.' : 'Email sign-in is disabled. Enable it in Firebase Console.') :
+        code === 'auth/network-request-failed'  ? (language === 'fr' ? 'Erreur réseau. Vérifie ta connexion.' : 'Network error. Check your connection.') :
+        code === 'auth/too-many-requests'       ? (language === 'fr' ? 'Trop de tentatives. Réessaie plus tard.' : 'Too many attempts. Try again later.') :
+        code === 'auth/not-ready'               ? (language === 'fr' ? 'Auth non initialisée. Relance l\'app.' : 'Auth not ready. Restart the app.') :
+        // Fallback: show the real error message so nothing is hidden
+        (err?.message ?? t.genericError);
       Alert.alert(t.errLabel, msg);
     } finally {
       setLoading(false);
@@ -75,6 +84,13 @@ export default function LoginScreen() {
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Auth init error banner — only visible if firebase/auth failed to load */}
+        {authError ? (
+          <View style={styles.authErrBanner}>
+            <Text style={styles.authErrText}>⚠️ Auth error: {authError}</Text>
+          </View>
+        ) : null}
+
         {/* Language toggle */}
         <TouchableOpacity
           style={styles.langBtn}
@@ -267,4 +283,14 @@ const styles = StyleSheet.create({
   btnText: { color: Colors.white, fontWeight: '700', fontSize: 16 },
   switchBtn: { marginTop: 16, alignItems: 'center' },
   switchText: { color: Colors.primary, fontSize: 14, fontWeight: '600' },
+  authErrBanner: {
+    width: '100%',
+    backgroundColor: '#FDECEA',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E74C3C',
+  },
+  authErrText: { fontSize: 12, color: '#C0392B', textAlign: 'center' },
 });

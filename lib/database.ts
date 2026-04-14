@@ -118,6 +118,22 @@ export function subscribeToHistory(
   });
 }
 
+// ── Real-time profile subscription ────────────────────────────────────
+// Used by AuthProvider so pairing updates (partnerId) propagate instantly
+// to both devices without requiring an app restart.
+export function subscribeToProfile(
+  uid: string,
+  onData: (profile: User | null) => void,
+  onError?: (err: Error) => void,
+): () => void {
+  const r = ref(db, `users/${uid}`);
+  return onValue(
+    r,
+    (snap) => onData(snap.exists() ? (snap.val() as User) : null),
+    (err) => onError?.(err),
+  );
+}
+
 // ── Couple ID (sorted uid pair) ────────────────────────────────────────
 export function getCoupleId(uid1: string, uid2: string): string {
   return [uid1, uid2].sort().join('_');

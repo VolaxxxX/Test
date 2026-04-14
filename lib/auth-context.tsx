@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-// TYPE-ONLY import — erased at compile time, zero runtime cost, cannot crash.
+// TYPE-ONLY — erased at compile time, zero runtime impact.
 import type { User as FirebaseUser } from 'firebase/auth';
 import app from './firebase';
-import { createUser, getUser, updateUser } from './database';
+import { createUser, getUser, updateUser, subscribeToProfile } from './database';
 import type { User } from './database';
 import type { Language } from './i18n';
 
@@ -10,6 +10,7 @@ interface AuthContextType {
   firebaseUser: FirebaseUser | null;
   userProfile: User | null;
   loading: boolean;
+  /** Non-null if firebase/auth failed to initialise entirely. */
   authError: string | null;
   signUp: (email: string, password: string, displayName: string, emoji: string, poopEmoji: string, language: Language) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
@@ -32,62 +33,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // These refs hold the lazily-loaded firebase/auth instance + functions.
-  // Using refs avoids re-renders and keeps the values available to all methods.
+  // Lazily-loaded firebase/auth module + auth instance.
   const authRef = useRef<any>(null);
-  const fbRef = useRef<any>(null); // { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  const fbRef = useRef<any>(null);
 
   useEffect(() => {
-    let unsubscribe: (() => void) | null = null;
+    let authUnsub: (() => void) | null = null;
+    let profileUnsub: (() => void) | null = null;
 
     try {
-      // ─── Lazy require ───────────────────────────────────────────────────────
-      // require() is wrapped in try/catch so any module-level crash in
-      // @firebase/auth is caught here instead of killing the entire JS bundle.
-      const firebaseAuth = require('@firebase/auth');
-      fbRef.current = firebaseAuth;
+      // ── Lazy require ────────────────────────────────────────────────────────
+      // Wrapped in try/catch: if @firebase/auth throws during module evaluation
+      // we catch it here instead of crashing the entire JS bundle.
+      const fa = require('@firebase/auth');
+      fbRef.current = fa;
 
-      // Try inMemoryPersistence first (no AsyncStorage needed).
-      // If auth was already initialized (hot-reload / fast-refresh), catch
-      // the "already-initialized" error and fetch the existing instance.
       let auth: any;
       try {
-        auth = firebaseAuth.initializeAuth(app, {
-          persistence: firebaseAuth.inMemoryPersistence,
-        });
+        auth = fa.initializeAuth(app, { persistence: fa.inMemoryPersistence });
       } catch {
-        auth = firebaseAuth.getAuth(app);
+        // Auth already initialised for this app instance (fast-refresh).
+        auth = fa.getAuth(app);
       }
-
-      if (!auth) throw new Error('Firebase auth instance is null');
+      if (!auth) throw new Error('firebase/auth returned null');
       authRef.current = auth;
 
-      unsubscribe = firebaseAuth.onAuthStateChanged(auth, async (user: FirebaseUser | null) => {
+      authUnsub = fa.onAuthStateChanged(auth, (user: FirebaseUser | null) => {
+        // Cancel the previous user's profile subscription.
+        profileUnsub?.();
+        profileUnsub = null;
+
         setFirebaseUser(user);
+
         if (user) {
-          try {
-            const profile = await getUser(user.uid);
-            setUserProfile(profile);
-          } catch {
-            setUserProfile(null);
-          }
+          // ── Real-time profile listener ───────────────────────────────────
+          // onValue fires immediately with the current DB value, then again
+          // whenever the record changes (e.g. partner pairs with this user).
+          let firstFire = true;
+          profileUnsub = subscribeToProfile(
+            user.uid,
+            (profile) => {
+              setUserProfile(profile);
+              if (firstFire) { firstFire = false; setLoading(false); }
+            },
+            (_err) => {
+              // RTDB permission error — still unblock the app.
+              if (firstFire) { firstFire = false; setLoading(false); }
+            },
+          );
         } else {
           setUserProfile(null);
+          setLoading(false);
         }
-        setLoading(false);
       });
     } catch (e: any) {
-      // Auth failed to initialise — log it and unblock navigation so the
-      // user can at least see the login screen (they'll get an error on submit).
-      console.error('[AuthProvider] firebase/auth init error:', e?.message ?? e);
-      setAuthError(e?.message ?? 'auth-init-failed');
+      const msg = e?.message ?? String(e);
+      console.error('[AuthProvider] firebase/auth init error:', msg);
+      setAuthError(msg);
       setLoading(false);
     }
 
-    return () => { unsubscribe?.(); };
+    return () => {
+      authUnsub?.();
+      profileUnsub?.();
+    };
   }, []);
 
-  // ── Auth actions (all guarded against missing auth instance) ─────────────
+  // ── Auth actions ───────────────────────────────────────────────────────────
 
   const signUp = async (
     email: string,
@@ -97,8 +109,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     poopEmoji: string,
     language: Language,
   ) => {
-    if (!authRef.current || !fbRef.current) throw new Error('Auth not ready');
-    const { user } = await fbRef.current.createUserWithEmailAndPassword(authRef.current, email, password);
+    if (!authRef.current || !fbRef.current) {
+      const err = new Error('Auth not ready') as any;
+      err.code = 'auth/not-ready';
+      throw err;
+    }
+
+    // 1. Create Firebase Auth user (may throw auth/* errors).
+    const { user } = await fbRef.current.createUserWithEmailAndPassword(
+      authRef.current, email, password,
+    );
+
+    // 2. Write user profile to Realtime DB.
+    //    If this fails (e.g. RTDB rules), delete the orphan auth account
+    //    so the user can try again cleanly.
     const profile: Omit<User, 'uid'> = {
       displayName,
       emoji,
@@ -106,15 +130,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       coupleCode: generateCoupleCode(),
       language,
     };
-    await createUser(user.uid, profile);
+    try {
+      await createUser(user.uid, profile);
+    } catch (dbErr: any) {
+      // Roll back auth so the user is not stuck with an account they can't use.
+      try { await user.delete(); } catch {}
+      const e = new Error(
+        dbErr?.message?.includes('PERMISSION_DENIED')
+          ? 'Database write denied. Check Firebase RTDB rules (see database.rules.json).'
+          : (dbErr?.message ?? 'Database write failed'),
+      ) as any;
+      e.code = 'db/write-failed';
+      throw e;
+    }
+
+    // The real-time profile listener (set up in onAuthStateChanged) will pick
+    // up the new profile automatically. Set it directly too for zero flicker.
     setUserProfile({ uid: user.uid, ...profile });
   };
 
   const signIn = async (email: string, password: string) => {
-    if (!authRef.current || !fbRef.current) throw new Error('Auth not ready');
-    const { user } = await fbRef.current.signInWithEmailAndPassword(authRef.current, email, password);
+    if (!authRef.current || !fbRef.current) {
+      const err = new Error('Auth not ready') as any;
+      err.code = 'auth/not-ready';
+      throw err;
+    }
+    const { user } = await fbRef.current.signInWithEmailAndPassword(
+      authRef.current, email, password,
+    );
+    // Profile is loaded by the real-time listener; set it directly too
+    // so navigation happens without waiting for the RTDB round-trip.
     const profile = await getUser(user.uid);
-    setUserProfile(profile);
+    if (profile) setUserProfile(profile);
   };
 
   const signOut = async () => {
@@ -126,7 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshProfile = async () => {
     if (firebaseUser) {
       const profile = await getUser(firebaseUser.uid);
-      setUserProfile(profile);
+      if (profile) setUserProfile(profile);
     }
   };
 
@@ -159,6 +206,5 @@ export function useAuth() {
   return ctx;
 }
 
-// Re-export types so callers don't need extra imports
 export type { FirebaseUser };
 export type { User } from './database';
