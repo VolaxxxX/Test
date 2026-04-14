@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/lib/useColors';
 
 interface Props {
   active: boolean;
@@ -9,6 +9,7 @@ interface Props {
 }
 
 export function PoopAnimation({ active, size = 80, poopEmoji = '💩' }: Props) {
+  const colors = useColors();
   const bounce = useRef(new Animated.Value(0)).current;
   const squish = useRef(new Animated.Value(1)).current;
   const sparkle1 = useRef(new Animated.Value(0)).current;
@@ -93,6 +94,7 @@ export function PoopAnimation({ active, size = 80, poopEmoji = '💩' }: Props) 
               width: size * 1.4,
               height: size * 1.4,
               borderRadius: size * 0.7,
+              backgroundColor: colors.accent,
               opacity: glowOpacity,
               transform: [{ scale: glowScale }],
             },
@@ -142,7 +144,6 @@ const styles = StyleSheet.create({
   },
   glow: {
     position: 'absolute',
-    backgroundColor: Colors.accent,
   },
   poop: { zIndex: 2 },
   sparkle: { position: 'absolute', zIndex: 3 },

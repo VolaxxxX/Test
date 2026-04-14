@@ -29,13 +29,23 @@ function formatDate(ts: number, language: Language): string {
   }).format(new Date(ts));
 }
 
-function getToday(): string {
-  return new Date().toISOString().split('T')[0];
+/**
+ * Returns today's date in YYYY-MM-DD using the user's own timezone.
+ * toISOString() uses UTC which misattributes sessions for users far from UTC
+ * (e.g. Indonesia UTC+7: 1am local = previous UTC day → wrong streak/stats).
+ */
+function getLocalToday(timezone?: string): string {
+  const tz = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date());
+  } catch {
+    return new Date().toISOString().split('T')[0];
+  }
 }
 
-function computeStreak(sessions: PoopSession[], userId: string): number {
+function computeStreak(sessions: PoopSession[], userId: string, timezone?: string): number {
   const dates = new Set(sessions.filter(s => s.userId === userId).map(s => s.date));
-  const today = getToday();
+  const today = getLocalToday(timezone);
   let streak = 0;
   const cursor = new Date();
   if (!dates.has(today)) cursor.setDate(cursor.getDate() - 1);
@@ -47,16 +57,17 @@ function computeStreak(sessions: PoopSession[], userId: string): number {
   return streak;
 }
 
-function computeCoupleStreak(sessions: PoopSession[], uid1: string, uid2: string): number {
+function computeCoupleStreak(sessions: PoopSession[], uid1: string, uid2: string, timezone?: string): number {
   const d1 = new Set(sessions.filter(s => s.userId === uid1).map(s => s.date));
   const d2 = new Set(sessions.filter(s => s.userId === uid2).map(s => s.date));
   const both = new Set([...d1].filter(d => d2.has(d)));
-  const today = getToday();
+  const today = getLocalToday(timezone);
+  const tz = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
   let streak = 0;
   const cursor = new Date();
   if (!both.has(today)) cursor.setDate(cursor.getDate() - 1);
   for (let i = 0; i < 365; i++) {
-    const ds = cursor.toISOString().split('T')[0];
+    const ds = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(cursor);
     if (both.has(ds)) { streak++; cursor.setDate(cursor.getDate() - 1); }
     else break;
   }
@@ -71,15 +82,16 @@ function computeRecord(sessions: PoopSession[], userId: string): number {
   return Math.max(0, ...Object.values(byDate));
 }
 
-function getWeeklyData(sessions: PoopSession[], userId: string, language: Language) {
+function getWeeklyData(sessions: PoopSession[], userId: string, language: Language, timezone?: string) {
   const locale = language === 'fr' ? 'fr-FR' : 'en-US';
+  const tz = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
   const today = new Date();
   const data: number[] = [];
   const dayLabels: string[] = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(d);
     data.push(sessions.filter(s => s.userId === userId && s.date === dateStr).length);
     dayLabels.push(new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(d));
   }
@@ -109,7 +121,7 @@ export default function HistoryScreen() {
     return unsub;
   }, [coupleId]);
 
-  const today = getToday();
+  const today = getLocalToday(userProfile?.timezone);
   const myUid = userProfile?.uid ?? '';
   const partnerUid = userProfile?.partnerId ?? '';
 
@@ -126,11 +138,11 @@ export default function HistoryScreen() {
   const partnerAvgDuration = partnerSessionsWithDuration.length > 0
     ? partnerSessionsWithDuration.reduce((a, s) => a + (s.duration ?? 0), 0) / partnerSessionsWithDuration.length : 0;
 
-  const myStreak = computeStreak(sessions, myUid);
-  const partnerStreak = computeStreak(sessions, partnerUid);
-  const coupleStreak = computeCoupleStreak(sessions, myUid, partnerUid);
+  const myStreak = computeStreak(sessions, myUid, userProfile?.timezone);
+  const partnerStreak = computeStreak(sessions, partnerUid, userProfile?.partnerTimezone);
+  const coupleStreak = computeCoupleStreak(sessions, myUid, partnerUid, userProfile?.timezone);
   const myRecord = computeRecord(sessions, myUid);
-  const { data: weekData, dayLabels } = getWeeklyData(sessions, myUid, language);
+  const { data: weekData, dayLabels } = getWeeklyData(sessions, myUid, language, userProfile?.timezone);
 
   return (
     <SafeAreaView style={styles.safe}>

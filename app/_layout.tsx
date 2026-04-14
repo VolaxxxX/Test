@@ -49,6 +49,15 @@ function NotificationRegistrar() {
   return null;
 }
 
+// ── Dynamic status bar — light text on dark bg, dark text on light bg ───────
+function AppStatusBar() {
+  const { userProfile } = useAuth();
+  // StatusBar style="light" → white icons (for dark backgrounds)
+  // StatusBar style="dark"  → black icons (for light backgrounds)
+  const style = (userProfile?.darkMode ?? false) ? 'light' : 'dark';
+  return <StatusBar style={style} />;
+}
+
 // ── Root layout ────────────────────────────────────────────────────────────
 export default function RootLayout() {
   return (
@@ -56,7 +65,7 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <AuthProvider>
           <NotificationRegistrar />
-          <StatusBar style="dark" />
+          <AppStatusBar />
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="(auth)" />
