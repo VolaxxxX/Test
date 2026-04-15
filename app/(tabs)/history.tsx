@@ -6,11 +6,13 @@ import {
   FlatList,
   SafeAreaView,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import { useAuth } from '@/lib/auth-context';
 import { useColors } from '@/lib/useColors';
 import { useHistory } from '@/lib/useHistory';
-import { PoopSession } from '@/lib/database';
+import { PoopSession, getCoupleId, updateSessionReaction } from '@/lib/database';
+import { EmojiReactPicker } from '@/components/EmojiReactPicker';
 import { WeeklyChart } from '@/components/WeeklyChart';
 import { CalendarView } from '@/components/CalendarView';
 import { AnimatedNumber } from '@/components/AnimatedNumber';
@@ -128,9 +130,12 @@ export default function HistoryScreen() {
   const language = userProfile?.language ?? 'fr';
   const t = getT(language);
 
+  const [reactingSession, setReactingSession] = useState<PoopSession | null>(null);
+
   const today = getLocalToday(userProfile?.timezone);
   const myUid = userProfile?.uid ?? '';
   const partnerUid = userProfile?.partnerId ?? '';
+  const coupleId = myUid && partnerUid ? getCoupleId(myUid, partnerUid) : null;
 
   const myTodayCount = sessions.filter(s => s.userId === myUid && s.date === today).length;
   const partnerTodayCount = sessions.filter(s => s.userId === partnerUid && s.date === today).length;
@@ -359,8 +364,19 @@ export default function HistoryScreen() {
     </View>
   );
 
+  const handleReact = async (emoji: string) => {
+    if (!reactingSession || !coupleId) return;
+    try { await updateSessionReaction(coupleId, reactingSession.id, emoji); } catch {}
+    setReactingSession(null);
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
+      <EmojiReactPicker
+        visible={!!reactingSession}
+        onSelect={handleReact}
+        onClose={() => setReactingSession(null)}
+      />
       <FlatList
         data={loading ? [] : sessions}
         keyExtractor={item => item.id}
@@ -377,16 +393,24 @@ export default function HistoryScreen() {
           ) : null
         }
         renderItem={({ item }) => (
-          <SessionRow session={item} isMe={item.userId === myUid} language={language} t={t} colors={colors} />
+          <SessionRow
+            session={item}
+            isMe={item.userId === myUid}
+            language={language}
+            t={t}
+            colors={colors}
+            onReact={item.userId !== myUid ? () => setReactingSession(item) : undefined}
+          />
         )}
       />
     </SafeAreaView>
   );
 }
 
-function SessionRow({ session, isMe, language, t, colors }: {
+function SessionRow({ session, isMe, language, t, colors, onReact }: {
   session: PoopSession; isMe: boolean; language: Language;
   t: ReturnType<typeof getT>; colors: ColorScheme;
+  onReact?: () => void;
 }) {
   return (
     <View style={{
@@ -398,7 +422,7 @@ function SessionRow({ session, isMe, language, t, colors }: {
     }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
         <Text style={{ fontSize: 26 }}>{session.userPoopEmoji ?? session.userEmoji}</Text>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 13, fontWeight: '700', color: colors.secondary }}>{session.userName}</Text>
           <Text style={{ fontSize: 11, color: colors.textLight }}>{formatDate(session.startTime, language)}</Text>
           {session.location?.address && (
@@ -406,7 +430,27 @@ function SessionRow({ session, isMe, language, t, colors }: {
               📍 {session.location.address}
             </Text>
           )}
-          {session.reaction && <Text style={{ fontSize: 16, marginTop: 2 }}>{session.reaction}</Text>}
+          {/* Quality display */}
+          {isMe && session.quality ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
+              <Text style={{ fontSize: 11 }}>{'💩'.repeat(session.quality)}</Text>
+              {session.tag ? (
+                <Text style={{ fontSize: 10, color: colors.primary, fontWeight: '700' }}>
+                  · {session.tag}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+          {/* Reaction / React button */}
+          {session.reaction ? (
+            <Text style={{ fontSize: 18, marginTop: 2 }}>{session.reaction}</Text>
+          ) : !isMe && onReact ? (
+            <TouchableOpacity onPress={onReact} style={{ marginTop: 4 }}>
+              <Text style={{ fontSize: 12, color: colors.primary, fontWeight: '700' }}>
+                {language === 'fr' ? '➕ Réagir' : '➕ React'}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       </View>
       <View style={{ alignItems: 'flex-end' }}>

@@ -15,6 +15,7 @@ export interface User {
   timezone?: string;
   darkMode?: boolean;
   partnerTimezone?: string;
+  themeColor?: string;
 }
 
 export interface PoopSession {
@@ -33,6 +34,8 @@ export interface PoopSession {
   };
   date: string;
   reaction?: string;
+  quality?: number;  // 1–5
+  tag?: string;      // 'express' | 'normal' | 'difficile' | 'legendary'
 }
 
 export interface ActiveSession {
@@ -120,6 +123,14 @@ export async function savePoopSession(coupleId: string, session: Omit<PoopSessio
 
 export async function updateSessionReaction(coupleId: string, sessionId: string, reaction: string) {
   await update(ref(db, `history/${coupleId}/${sessionId}`), { reaction });
+}
+
+export async function updateSessionQuality(
+  coupleId: string, sessionId: string, quality: number, tag?: string,
+) {
+  const data: Record<string, any> = { quality };
+  if (tag) data.tag = tag;
+  await update(ref(db, `history/${coupleId}/${sessionId}`), data);
 }
 
 export function subscribeToHistory(

@@ -19,6 +19,7 @@ interface AuthContextType {
   updateLanguage: (lang: Language) => Promise<void>;
   updatePoopEmoji: (poopEmoji: string) => Promise<void>;
   updateDarkMode: (dark: boolean) => Promise<void>;
+  updateThemeColor: (color: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -232,11 +233,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUserProfile({ ...userProfile, darkMode: dark });
   };
 
+  const updateThemeColor = async (color: string) => {
+    if (!firebaseUser || !userProfile) return;
+    await updateUser(firebaseUser.uid, { themeColor: color });
+    setUserProfile({ ...userProfile, themeColor: color });
+  };
+
   return (
     <AuthContext.Provider value={{
       firebaseUser, userProfile, loading, authError,
       signUp, signIn, signOut, refreshProfile,
-      updateLanguage, updatePoopEmoji, updateDarkMode,
+      updateLanguage, updatePoopEmoji, updateDarkMode, updateThemeColor,
     }}>
       {children}
     </AuthContext.Provider>

@@ -14,9 +14,10 @@ import { useColors } from '@/lib/useColors';
 import { getT, POOP_EMOJIS } from '@/lib/i18n';
 import type { Language } from '@/lib/i18n';
 import type { ColorScheme } from '@/constants/Colors';
+import { THEME_COLORS } from '@/constants/Colors';
 
 export default function ProfileScreen() {
-  const { userProfile, signOut, updateLanguage, updatePoopEmoji, updateDarkMode } = useAuth();
+  const { userProfile, signOut, updateLanguage, updatePoopEmoji, updateDarkMode, updateThemeColor } = useAuth();
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
@@ -90,6 +91,27 @@ export default function ProfileScreen() {
                 <Text style={styles.poopEmojiText}>{e}</Text>
               </TouchableOpacity>
             ))}
+          </View>
+        </View>
+
+        {/* Theme color picker */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>
+            {language === 'fr' ? 'Couleur du thème' : 'Theme color'}
+          </Text>
+          <View style={styles.colorGrid}>
+            {THEME_COLORS.map(({ color }) => {
+              const active = (userProfile?.themeColor ?? '#C8825A') === color;
+              return (
+                <TouchableOpacity
+                  key={color}
+                  style={[styles.colorBtn, { backgroundColor: color }, active && styles.colorBtnActive]}
+                  onPress={() => updateThemeColor(color)}
+                >
+                  {active && <Text style={{ color: '#fff', fontSize: 18, fontWeight: '900' }}>✓</Text>}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
@@ -171,6 +193,13 @@ function makeStyles(c: ColorScheme) {
     toggleBtnText: { fontWeight: '700', fontSize: 14 },
     actionBtn: { backgroundColor: c.secondary, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
     actionBtnText: { color: c.white, fontWeight: '700', fontSize: 14 },
+    colorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    colorBtn: {
+      width: 44, height: 44, borderRadius: 22,
+      justifyContent: 'center', alignItems: 'center',
+      borderWidth: 2, borderColor: 'transparent',
+    },
+    colorBtnActive: { borderColor: c.secondary, borderWidth: 3 },
     poopEmojiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
     poopEmojiBtn: {
       width: 52, height: 52, borderRadius: 26, backgroundColor: c.lightGray,

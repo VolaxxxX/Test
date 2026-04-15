@@ -37,3 +37,14 @@ export const DarkColors: typeof LightColors = {
 // Default export kept for screens that don't need dynamic theming (auth/pair)
 export const Colors = LightColors;
 export type ColorScheme = typeof LightColors;
+
+export const THEME_COLORS = [
+  { color: '#C8825A', light: '#F0B080' },  // Brown (default)
+  { color: '#7B5EA7', light: '#B09DD0' },  // Purple
+  { color: '#2E86C1', light: '#7FB3D3' },  // Blue
+  { color: '#1E8449', light: '#7DCEA0' },  // Green
+  { color: '#C0392B', light: '#E59E9A' },  // Red
+  { color: '#D35400', light: '#E59866' },  // Orange
+  { color: '#117A65', light: '#76C6BA' },  // Teal
+  { color: '#9B59B6', light: '#D2B4DE' },  // Violet
+];

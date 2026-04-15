@@ -11,6 +11,7 @@ import {
   ActiveSession,
   PoopSession,
   updateSessionReaction,
+  updateSessionQuality,
   getUser,
 } from '@/lib/database';
 import { useAuth } from '@/lib/auth-context';
@@ -225,10 +226,11 @@ export function usePoopSession() {
     }
   };
 
-  const submitReaction = async (emoji: string) => {
+  const submitReaction = async (emoji: string | null, quality: number, tag?: string) => {
     if (pendingSessionId && coupleId) {
       try {
-        await updateSessionReaction(coupleId, pendingSessionId, emoji);
+        if (emoji) await updateSessionReaction(coupleId, pendingSessionId, emoji);
+        if (quality > 0) await updateSessionQuality(coupleId, pendingSessionId, quality, tag);
       } catch {}
     }
     setPendingSessionId(null);

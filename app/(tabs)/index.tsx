@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo, useState } from 'react';
+import React, { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import { useColors } from '@/lib/useColors';
 import { usePoopSession } from '@/hooks/usePoopSession';
 import { PartnerCard } from '@/components/PartnerCard';
 import { ReactionPicker } from '@/components/ReactionPicker';
+import { PartnerToast } from '@/components/PartnerToast';
 import { getT, LOVE_MESSAGES } from '@/lib/i18n';
 import type { Language } from '@/lib/i18n';
 import type { ColorScheme } from '@/constants/Colors';
@@ -59,6 +60,20 @@ export default function HomeScreen() {
 
   const language = userProfile?.language ?? 'fr';
   const t = getT(language);
+
+  // Toast: show when partner goes from inactive → active
+  const [showPartnerToast, setShowPartnerToast] = useState(false);
+  const prevPartnerRef = useRef<typeof partnerSession>(undefined);
+  useEffect(() => {
+    if (partnerSession && !prevPartnerRef.current) {
+      setShowPartnerToast(true);
+      const timer = setTimeout(() => setShowPartnerToast(false), 4000);
+      prevPartnerRef.current = partnerSession;
+      return () => clearTimeout(timer);
+    }
+    if (!partnerSession) prevPartnerRef.current = undefined;
+    else prevPartnerRef.current = partnerSession;
+  }, [partnerSession]);
 
   // Live dual-clock — refresh every 30 s
   const [now, setNow] = useState(Date.now());
@@ -208,6 +223,13 @@ export default function HomeScreen() {
         visible={!!pendingSessionId}
         onSelect={submitReaction}
         onSkip={dismissReaction}
+      />
+      <PartnerToast
+        visible={showPartnerToast}
+        name={userProfile.partnerName ?? '?'}
+        emoji={partnerSession?.userEmoji ?? '💞'}
+        poopEmoji={partnerSession?.userPoopEmoji ?? '💩'}
+        language={language}
       />
     </SafeAreaView>
   );
