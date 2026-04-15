@@ -9,9 +9,13 @@ import {
 } from 'react-native';
 import { useAuth } from '@/lib/auth-context';
 import { useColors } from '@/lib/useColors';
-import { subscribeToHistory, getCoupleId, PoopSession } from '@/lib/database';
+import { useHistory } from '@/lib/useHistory';
+import { PoopSession } from '@/lib/database';
 import { WeeklyChart } from '@/components/WeeklyChart';
 import { CalendarView } from '@/components/CalendarView';
+import { AnimatedNumber } from '@/components/AnimatedNumber';
+import { CircularProgress } from '@/components/CircularProgress';
+import { RingChart } from '@/components/RingChart';
 import { getT } from '@/lib/i18n';
 import type { Language } from '@/lib/i18n';
 import type { ColorScheme } from '@/constants/Colors';
@@ -100,28 +104,29 @@ function getWeeklyData(sessions: PoopSession[], userId: string, language: Langua
   return { data, dayLabels };
 }
 
+function currentMonthPrefix(tz: string): string {
+  try { return new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date()).slice(0, 7); }
+  catch { return new Date().toISOString().slice(0, 7); }
+}
+function prevMonthPrefix(tz: string): string {
+  const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1);
+  try { return new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(d).slice(0, 7); }
+  catch { return d.toISOString().slice(0, 7); }
+}
+function daysInCurrentMonth(tz: string): number {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date());
+  const [y, m] = today.split('-').map(Number);
+  return new Date(y, m, 0).getDate();
+}
+
 export default function HistoryScreen() {
   const { userProfile } = useAuth();
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const [sessions, setSessions] = useState<PoopSession[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { sessions, loading } = useHistory();
 
   const language = userProfile?.language ?? 'fr';
   const t = getT(language);
-
-  const coupleId = userProfile?.uid && userProfile?.partnerId
-    ? getCoupleId(userProfile.uid, userProfile.partnerId)
-    : null;
-
-  useEffect(() => {
-    if (!coupleId) { setLoading(false); return; }
-    const unsub = subscribeToHistory(coupleId, (data) => {
-      setSessions(data);
-      setLoading(false);
-    });
-    return unsub;
-  }, [coupleId]);
 
   const today = getLocalToday(userProfile?.timezone);
   const myUid = userProfile?.uid ?? '';
@@ -148,12 +153,24 @@ export default function HistoryScreen() {
 
   // ── Advanced stats ──────────────────────────────────────────────────────
   const totalCouple = myAllTime + partnerAllTime;
+  const myPercent = totalCouple > 0 ? Math.round((myAllTime / totalCouple) * 100) : 50;
 
-  // Average per active day (days where I pooped at least once)
   const myActiveDays = new Set(sessions.filter(s => s.userId === myUid).map(s => s.date)).size;
-  const myAvgPerDay = myActiveDays > 0 ? (myAllTime / myActiveDays).toFixed(1) : '0';
+  const myAvgPerDay = myActiveDays > 0 ? (myAllTime / myActiveDays) : 0;
 
-  // Most active day of week
+  const tz = userProfile?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const monthPfx = currentMonthPrefix(tz);
+  const prevPfx  = prevMonthPrefix(tz);
+  const myThisMonth = sessions.filter(s => s.userId === myUid && s.date?.startsWith(monthPfx)).length;
+  const myLastMonth = sessions.filter(s => s.userId === myUid && s.date?.startsWith(prevPfx)).length;
+  const monthDiff = myThisMonth - myLastMonth;
+
+  const activeDaysThisMonth = new Set(
+    sessions.filter(s => s.userId === myUid && s.date?.startsWith(monthPfx)).map(s => s.date)
+  ).size;
+  const totalDaysInMonth = daysInCurrentMonth(tz);
+  const regularity = Math.round((activeDaysThisMonth / totalDaysInMonth) * 100);
+
   const dayOfWeekCount: Record<number, number> = {};
   for (const s of sessions.filter(s => s.userId === myUid)) {
     const dow = new Date(s.startTime).getDay();
@@ -162,13 +179,8 @@ export default function HistoryScreen() {
   const bestDow = Object.entries(dayOfWeekCount).sort((a, b) => b[1] - a[1])[0]?.[0];
   const bestDayLabel = bestDow !== undefined
     ? new Intl.DateTimeFormat(language === 'fr' ? 'fr-FR' : 'en-US', { weekday: 'long' }).format(
-        new Date(2024, 0, parseInt(bestDow) === 0 ? 7 : parseInt(bestDow)) // align Sunday
-      )
-    : '—';
-
-  // Who poops more %
-  const myPercent = totalCouple > 0 ? Math.round((myAllTime / totalCouple) * 100) : 50;
-  const partnerPercent = 100 - myPercent;
+        new Date(2024, 0, parseInt(bestDow) === 0 ? 7 : parseInt(bestDow))
+      ) : '—';
 
   const ListHeader = (
     <View style={styles.header}>
@@ -198,7 +210,7 @@ export default function HistoryScreen() {
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
           <Text style={styles.statIcon}>🏆</Text>
-          <Text style={styles.statValue}>{myAllTime}</Text>
+          <AnimatedNumber value={myAllTime} style={styles.statValue} />
           <Text style={styles.statLabel}>{t.myPoops}</Text>
         </View>
         <View style={styles.statCard}>
@@ -208,7 +220,7 @@ export default function HistoryScreen() {
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statIcon}>🔥</Text>
-          <Text style={styles.statValue}>{myStreak}</Text>
+          <AnimatedNumber value={myStreak} style={styles.statValue} />
           <Text style={styles.statLabel}>{t.daysLabel}</Text>
           <Text style={styles.statSubLabel}>{t.streakLabel}</Text>
         </View>
@@ -218,7 +230,7 @@ export default function HistoryScreen() {
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
           <Text style={styles.statIcon}>💞</Text>
-          <Text style={styles.statValue}>{partnerAllTime}</Text>
+          <AnimatedNumber value={partnerAllTime} style={styles.statValue} />
           <Text style={styles.statLabel}>{t.partnerPoops}</Text>
         </View>
         <View style={styles.statCard}>
@@ -228,7 +240,7 @@ export default function HistoryScreen() {
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statIcon}>🔥</Text>
-          <Text style={styles.statValue}>{partnerStreak}</Text>
+          <AnimatedNumber value={partnerStreak} style={styles.statValue} />
           <Text style={styles.statLabel}>{t.daysLabel}</Text>
           <Text style={styles.statSubLabel}>{t.partnerStreakLabel}</Text>
         </View>
@@ -238,13 +250,13 @@ export default function HistoryScreen() {
       <View style={styles.statsRow}>
         <View style={[styles.statCard, styles.coupleCard]}>
           <Text style={styles.statIcon}>💑</Text>
-          <Text style={[styles.statValue, { color: colors.primary }]}>{coupleStreak}</Text>
+          <AnimatedNumber value={coupleStreak} style={[styles.statValue, { color: colors.primary }]} />
           <Text style={styles.statLabel}>{t.bothDays}</Text>
           <Text style={styles.statSubLabel}>{t.coupleStreakLabel}</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statIcon}>📅</Text>
-          <Text style={styles.statValue}>{myRecord}</Text>
+          <AnimatedNumber value={myRecord} style={styles.statValue} />
           <Text style={styles.statLabel}>{t.maxPerDay}</Text>
           <Text style={styles.statSubLabel}>{t.recordLabel}</Text>
         </View>
@@ -252,16 +264,16 @@ export default function HistoryScreen() {
 
       <WeeklyChart data={weekData} dayLabels={dayLabels} />
 
-      {/* Advanced stats */}
+      {/* Advanced stats row */}
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
           <Text style={styles.statIcon}>💑</Text>
-          <Text style={styles.statValue}>{totalCouple}</Text>
+          <AnimatedNumber value={totalCouple} style={styles.statValue} />
           <Text style={styles.statLabel}>{language === 'fr' ? 'Total couple' : 'Couple total'}</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statIcon}>📈</Text>
-          <Text style={styles.statValue}>{myAvgPerDay}</Text>
+          <AnimatedNumber value={myAvgPerDay} style={styles.statValue} decimals={1} />
           <Text style={styles.statLabel}>{language === 'fr' ? 'Moy./jour actif' : 'Avg./active day'}</Text>
         </View>
         <View style={styles.statCard}>
@@ -273,22 +285,60 @@ export default function HistoryScreen() {
         </View>
       </View>
 
-      {/* Who poops more */}
-      {totalCouple > 0 && (
-        <View style={styles.compCard}>
-          <Text style={styles.compTitle}>
-            {language === 'fr' ? '💩 Qui poope le plus ?' : '💩 Who poops more?'}
-          </Text>
-          <View style={styles.compBar}>
-            <View style={[styles.compBarMe, { flex: myPercent }]} />
-            <View style={[styles.compBarPartner, { flex: partnerPercent }]} />
+      {/* Regularity circle + Ring chart */}
+      <View style={styles.ringCard}>
+        <View style={{ alignItems: 'center', flex: 1 }}>
+          <Text style={styles.ringLabel}>{language === 'fr' ? 'Régularité' : 'Regularity'}</Text>
+          <CircularProgress
+            percent={regularity}
+            fillColor={colors.primary}
+            bgColor={colors.lightGray}
+            centerValue={`${regularity}%`}
+            centerLabel={`${activeDaysThisMonth}/${totalDaysInMonth}j`}
+            labelColor={colors.secondary}
+          />
+        </View>
+        {totalCouple > 0 && (
+          <View style={{ alignItems: 'center', flex: 1 }}>
+            <Text style={styles.ringLabel}>{language === 'fr' ? 'Qui poope + ?' : 'Who poops more?'}</Text>
+            <RingChart
+              myPercent={myPercent}
+              myColor={colors.primary}
+              partnerColor={colors.primaryLight}
+              myLabel={userProfile?.displayName ?? 'Moi'}
+              partnerLabel={userProfile?.partnerName ?? '?'}
+              textColor={colors.secondary}
+              size={110} thickness={12}
+              centerLabel={`${totalCouple}`}
+            />
           </View>
-          <View style={styles.compLabels}>
-            <Text style={styles.compLabelMe}>{userProfile?.displayName} {myPercent}%</Text>
-            <Text style={styles.compLabelPartner}>{userProfile?.partnerName} {partnerPercent}%</Text>
+        )}
+      </View>
+
+      {/* Month comparison */}
+      <View style={styles.monthCard}>
+        <Text style={styles.ringLabel}>{language === 'fr' ? '📈 Ce mois vs mois dernier' : '📈 This month vs last month'}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', marginTop: 8 }}>
+          <View style={{ alignItems: 'center' }}>
+            <Text style={{ fontSize: 11, color: colors.textLight, marginBottom: 4 }}>
+              {language === 'fr' ? 'Mois dernier' : 'Last month'}
+            </Text>
+            <AnimatedNumber value={myLastMonth} style={[styles.statValue, { fontSize: 28 }]} />
+          </View>
+          <Text style={{
+            fontSize: 24, fontWeight: '800',
+            color: monthDiff > 0 ? colors.success : monthDiff < 0 ? colors.danger : colors.gray,
+          }}>
+            {monthDiff > 0 ? `+${monthDiff}` : monthDiff === 0 ? '=' : `${monthDiff}`}
+          </Text>
+          <View style={{ alignItems: 'center' }}>
+            <Text style={{ fontSize: 11, color: colors.textLight, marginBottom: 4 }}>
+              {language === 'fr' ? 'Ce mois' : 'This month'}
+            </Text>
+            <AnimatedNumber value={myThisMonth} style={[styles.statValue, { fontSize: 28, color: colors.primary }]} />
           </View>
         </View>
-      )}
+      </View>
 
       {/* Calendar */}
       <Text style={styles.sectionTitle}>
@@ -399,17 +449,16 @@ function makeStyles(c: ColorScheme) {
     statLabel: { fontSize: 11, color: c.textLight, marginTop: 2, textAlign: 'center' },
     statSubLabel: { fontSize: 10, color: c.primary, fontWeight: '700', marginTop: 1 },
     sectionTitle: { fontSize: 16, fontWeight: '700', color: c.secondary, marginBottom: 10, marginTop: 4 },
-    compCard: {
-      backgroundColor: c.cardBg, borderRadius: 16, padding: 14, marginBottom: 10,
+    ringCard: {
+      flexDirection: 'row', backgroundColor: c.cardBg, borderRadius: 16, padding: 16,
+      marginBottom: 10, alignItems: 'center', justifyContent: 'space-around',
       shadowColor: c.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2,
     },
-    compTitle: { fontSize: 13, fontWeight: '700', color: c.secondary, marginBottom: 10, textAlign: 'center' },
-    compBar: { flexDirection: 'row', height: 12, borderRadius: 6, overflow: 'hidden', marginBottom: 6 },
-    compBarMe: { backgroundColor: c.primary },
-    compBarPartner: { backgroundColor: c.primaryLight },
-    compLabels: { flexDirection: 'row', justifyContent: 'space-between' },
-    compLabelMe: { fontSize: 11, color: c.primary, fontWeight: '700' },
-    compLabelPartner: { fontSize: 11, color: c.primaryLight, fontWeight: '700' },
+    ringLabel: { fontSize: 11, fontWeight: '700', color: c.textLight, marginBottom: 10, textAlign: 'center' },
+    monthCard: {
+      backgroundColor: c.cardBg, borderRadius: 16, padding: 16, marginBottom: 10,
+      shadowColor: c.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2,
+    },
     emptyState: { alignItems: 'center', marginTop: 60 },
     emptyEmoji: { fontSize: 64, marginBottom: 12 },
     emptyText: { fontSize: 16, fontWeight: '600', color: c.secondary, textAlign: 'center' },
