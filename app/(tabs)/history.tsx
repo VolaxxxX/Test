@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useColors } from '@/lib/useColors';
 import { subscribeToHistory, getCoupleId, PoopSession } from '@/lib/database';
 import { WeeklyChart } from '@/components/WeeklyChart';
+import { CalendarView } from '@/components/CalendarView';
 import { getT } from '@/lib/i18n';
 import type { Language } from '@/lib/i18n';
 import type { ColorScheme } from '@/constants/Colors';
@@ -145,6 +146,30 @@ export default function HistoryScreen() {
   const myRecord = computeRecord(sessions, myUid);
   const { data: weekData, dayLabels } = getWeeklyData(sessions, myUid, language, userProfile?.timezone);
 
+  // ── Advanced stats ──────────────────────────────────────────────────────
+  const totalCouple = myAllTime + partnerAllTime;
+
+  // Average per active day (days where I pooped at least once)
+  const myActiveDays = new Set(sessions.filter(s => s.userId === myUid).map(s => s.date)).size;
+  const myAvgPerDay = myActiveDays > 0 ? (myAllTime / myActiveDays).toFixed(1) : '0';
+
+  // Most active day of week
+  const dayOfWeekCount: Record<number, number> = {};
+  for (const s of sessions.filter(s => s.userId === myUid)) {
+    const dow = new Date(s.startTime).getDay();
+    dayOfWeekCount[dow] = (dayOfWeekCount[dow] ?? 0) + 1;
+  }
+  const bestDow = Object.entries(dayOfWeekCount).sort((a, b) => b[1] - a[1])[0]?.[0];
+  const bestDayLabel = bestDow !== undefined
+    ? new Intl.DateTimeFormat(language === 'fr' ? 'fr-FR' : 'en-US', { weekday: 'long' }).format(
+        new Date(2024, 0, parseInt(bestDow) === 0 ? 7 : parseInt(bestDow)) // align Sunday
+      )
+    : '—';
+
+  // Who poops more %
+  const myPercent = totalCouple > 0 ? Math.round((myAllTime / totalCouple) * 100) : 50;
+  const partnerPercent = 100 - myPercent;
+
   const ListHeader = (
     <View style={styles.header}>
       <Text style={styles.title}>{t.statsTitle}</Text>
@@ -226,6 +251,57 @@ export default function HistoryScreen() {
       </View>
 
       <WeeklyChart data={weekData} dayLabels={dayLabels} />
+
+      {/* Advanced stats */}
+      <View style={styles.statsRow}>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>💑</Text>
+          <Text style={styles.statValue}>{totalCouple}</Text>
+          <Text style={styles.statLabel}>{language === 'fr' ? 'Total couple' : 'Couple total'}</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>📈</Text>
+          <Text style={styles.statValue}>{myAvgPerDay}</Text>
+          <Text style={styles.statLabel}>{language === 'fr' ? 'Moy./jour actif' : 'Avg./active day'}</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>📅</Text>
+          <Text numberOfLines={1} style={[styles.statValue, { fontSize: 12 }]}>
+            {bestDayLabel !== '—' ? bestDayLabel.charAt(0).toUpperCase() + bestDayLabel.slice(1) : '—'}
+          </Text>
+          <Text style={styles.statLabel}>{language === 'fr' ? 'Jour favori' : 'Fav. day'}</Text>
+        </View>
+      </View>
+
+      {/* Who poops more */}
+      {totalCouple > 0 && (
+        <View style={styles.compCard}>
+          <Text style={styles.compTitle}>
+            {language === 'fr' ? '💩 Qui poope le plus ?' : '💩 Who poops more?'}
+          </Text>
+          <View style={styles.compBar}>
+            <View style={[styles.compBarMe, { flex: myPercent }]} />
+            <View style={[styles.compBarPartner, { flex: partnerPercent }]} />
+          </View>
+          <View style={styles.compLabels}>
+            <Text style={styles.compLabelMe}>{userProfile?.displayName} {myPercent}%</Text>
+            <Text style={styles.compLabelPartner}>{userProfile?.partnerName} {partnerPercent}%</Text>
+          </View>
+        </View>
+      )}
+
+      {/* Calendar */}
+      <Text style={styles.sectionTitle}>
+        {language === 'fr' ? '📅 Calendrier' : '📅 Calendar'}
+      </Text>
+      <CalendarView
+        sessions={sessions}
+        myUid={myUid}
+        partnerUid={partnerUid}
+        colors={colors}
+        language={language}
+        timezone={userProfile?.timezone}
+      />
 
       <Text style={styles.sectionTitle}>{t.recentHistory}</Text>
 
@@ -322,7 +398,18 @@ function makeStyles(c: ColorScheme) {
     statValue: { fontSize: 18, fontWeight: '800', color: c.secondary },
     statLabel: { fontSize: 11, color: c.textLight, marginTop: 2, textAlign: 'center' },
     statSubLabel: { fontSize: 10, color: c.primary, fontWeight: '700', marginTop: 1 },
-    sectionTitle: { fontSize: 16, fontWeight: '700', color: c.secondary, marginBottom: 10 },
+    sectionTitle: { fontSize: 16, fontWeight: '700', color: c.secondary, marginBottom: 10, marginTop: 4 },
+    compCard: {
+      backgroundColor: c.cardBg, borderRadius: 16, padding: 14, marginBottom: 10,
+      shadowColor: c.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2,
+    },
+    compTitle: { fontSize: 13, fontWeight: '700', color: c.secondary, marginBottom: 10, textAlign: 'center' },
+    compBar: { flexDirection: 'row', height: 12, borderRadius: 6, overflow: 'hidden', marginBottom: 6 },
+    compBarMe: { backgroundColor: c.primary },
+    compBarPartner: { backgroundColor: c.primaryLight },
+    compLabels: { flexDirection: 'row', justifyContent: 'space-between' },
+    compLabelMe: { fontSize: 11, color: c.primary, fontWeight: '700' },
+    compLabelPartner: { fontSize: 11, color: c.primaryLight, fontWeight: '700' },
     emptyState: { alignItems: 'center', marginTop: 60 },
     emptyEmoji: { fontSize: 64, marginBottom: 12 },
     emptyText: { fontSize: 16, fontWeight: '600', color: c.secondary, textAlign: 'center' },
