@@ -83,8 +83,9 @@ export default function PairScreen() {
         `${partner.emoji} ${partner.displayName}`,
         [{ text: "Let's go ! 💩", onPress: () => router.replace('/(tabs)') }]
       );
-    } catch {
-      Alert.alert(t.errLabel, t.pairError);
+    } catch (e: any) {
+      const msg = e?.message ?? String(e);
+      Alert.alert(t.errLabel, msg || t.pairError);
     } finally {
       setLoading(false);
     }
