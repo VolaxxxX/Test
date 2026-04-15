@@ -9,6 +9,8 @@ on:
       - 'eas.json'
       - 'app.json'
       - 'package.json'
+      - 'package-lock.json'
+      - '.npmrc'
 
 jobs:
   build:
