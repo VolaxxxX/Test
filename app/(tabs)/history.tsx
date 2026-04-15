@@ -7,6 +7,7 @@ import {
   SafeAreaView,
   ActivityIndicator,
   TouchableOpacity,
+  TextInput,
 } from 'react-native';
 import { useAuth } from '@/lib/auth-context';
 import { useColors } from '@/lib/useColors';
@@ -133,6 +134,8 @@ export default function HistoryScreen() {
   const t = getT(language);
 
   const [reactingSession, setReactingSession] = useState<PoopSession | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterPeriod, setFilterPeriod] = useState<'all' | 'today' | 'week' | 'month'>('all');
 
   const today = getLocalToday(userProfile?.timezone);
   const myUid = userProfile?.uid ?? '';
@@ -188,6 +191,42 @@ export default function HistoryScreen() {
     ? new Intl.DateTimeFormat(language === 'fr' ? 'fr-FR' : 'en-US', { weekday: 'long' }).format(
         new Date(2024, 0, parseInt(bestDow) === 0 ? 7 : parseInt(bestDow))
       ) : '—';
+
+  // ── Search + filter ─────────────────────────────────────────────────────
+  const filteredSessions = useMemo(() => {
+    let result = [...sessions];
+
+    if (filterPeriod === 'today') {
+      result = result.filter(s => s.date === today);
+    } else if (filterPeriod === 'week') {
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 6);
+      const tz2 = userProfile?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const weekStart = new Intl.DateTimeFormat('en-CA', { timeZone: tz2 }).format(weekAgo);
+      result = result.filter(s => s.date >= weekStart);
+    } else if (filterPeriod === 'month') {
+      result = result.filter(s => s.date?.startsWith(monthPfx));
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(s =>
+        s.userName?.toLowerCase().includes(q) ||
+        s.location?.address?.toLowerCase().includes(q) ||
+        s.date?.includes(q) ||
+        s.tag?.toLowerCase().includes(q),
+      );
+    }
+
+    return result;
+  }, [sessions, filterPeriod, searchQuery, today, monthPfx, userProfile?.timezone]);
+
+  const FILTER_OPTS = [
+    { key: 'all' as const, labelFr: 'Tout', labelEn: 'All' },
+    { key: 'today' as const, labelFr: "Aujourd'hui", labelEn: 'Today' },
+    { key: 'week' as const, labelFr: '7 jours', labelEn: '7 days' },
+    { key: 'month' as const, labelFr: 'Ce mois', labelEn: 'Month' },
+  ];
 
   const ListHeader = (
     <View style={styles.header}>
@@ -391,6 +430,54 @@ export default function HistoryScreen() {
 
       <Text style={styles.sectionTitle}>{t.recentHistory}</Text>
 
+      {/* Search bar */}
+      <View style={{
+        flexDirection: 'row', alignItems: 'center',
+        backgroundColor: colors.cardBg, borderRadius: 12,
+        paddingHorizontal: 12, marginBottom: 10,
+        shadowColor: colors.shadow, shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06, shadowRadius: 4, elevation: 1,
+      }}>
+        <Text style={{ fontSize: 16, marginRight: 8 }}>🔍</Text>
+        <TextInput
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder={language === 'fr' ? 'Rechercher...' : 'Search...'}
+          placeholderTextColor={colors.gray}
+          style={{ flex: 1, fontSize: 14, color: colors.text, paddingVertical: 10 }}
+          clearButtonMode="while-editing"
+          returnKeyType="search"
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Text style={{ fontSize: 16, color: colors.gray }}>✕</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Filter chips */}
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+        {FILTER_OPTS.map(opt => (
+          <TouchableOpacity
+            key={opt.key}
+            onPress={() => setFilterPeriod(opt.key)}
+            style={{
+              paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
+              backgroundColor: filterPeriod === opt.key ? colors.primary : colors.cardBg,
+              borderWidth: 1.5,
+              borderColor: filterPeriod === opt.key ? colors.primary : colors.lightGray,
+            }}
+          >
+            <Text style={{
+              fontSize: 12, fontWeight: '700',
+              color: filterPeriod === opt.key ? '#fff' : colors.textLight,
+            }}>
+              {language === 'fr' ? opt.labelFr : opt.labelEn}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {loading && <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 20, marginBottom: 20 }} />}
     </View>
   );
@@ -409,7 +496,7 @@ export default function HistoryScreen() {
         onClose={() => setReactingSession(null)}
       />
       <FlatList
-        data={loading ? [] : sessions}
+        data={loading ? [] : filteredSessions}
         keyExtractor={item => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
@@ -417,9 +504,19 @@ export default function HistoryScreen() {
         ListEmptyComponent={
           !loading ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyEmoji}>🚽</Text>
-              <Text style={styles.emptyText}>{t.noHistory}</Text>
-              <Text style={styles.emptySubtext}>{t.goFirst}</Text>
+              <Text style={styles.emptyEmoji}>
+                {searchQuery || filterPeriod !== 'all' ? '🔍' : '🚽'}
+              </Text>
+              <Text style={styles.emptyText}>
+                {searchQuery || filterPeriod !== 'all'
+                  ? (language === 'fr' ? 'Aucun résultat' : 'No results')
+                  : t.noHistory}
+              </Text>
+              <Text style={styles.emptySubtext}>
+                {searchQuery || filterPeriod !== 'all'
+                  ? (language === 'fr' ? 'Essaie un autre filtre' : 'Try a different filter')
+                  : t.goFirst}
+              </Text>
             </View>
           ) : null
         }

@@ -26,7 +26,7 @@ export default function TabsLayout() {
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.gray,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '600' },
       }}
     >
       <Tabs.Screen
@@ -62,6 +62,15 @@ export default function TabsLayout() {
           title: 'Défis',
           tabBarIcon: ({ focused }) => (
             <TabIcon icon="🎮" focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="messages"
+        options={{
+          title: '💬',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon="💬" focused={focused} />
           ),
         }}
       />

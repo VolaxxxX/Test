@@ -13,6 +13,7 @@ import { usePoopSession } from '@/hooks/usePoopSession';
 import { PartnerCard } from '@/components/PartnerCard';
 import { ReactionPicker } from '@/components/ReactionPicker';
 import { PartnerToast } from '@/components/PartnerToast';
+import { CountdownCards } from '@/components/CountdownCards';
 import { getT, LOVE_MESSAGES } from '@/lib/i18n';
 import type { Language } from '@/lib/i18n';
 import type { ColorScheme } from '@/constants/Colors';
@@ -152,6 +153,11 @@ export default function HomeScreen() {
             </Text>
           </View>
         ) : null}
+
+        {/* Countdown cards */}
+        <View style={{ marginBottom: 12 }}>
+          <CountdownCards colors={colors} language={language} />
+        </View>
 
         {/* Status banner */}
         {bothPooping ? (

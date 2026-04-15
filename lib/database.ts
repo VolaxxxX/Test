@@ -181,6 +181,67 @@ export function subscribeToProfile(
   );
 }
 
+// ── Messages ──────────────────────────────────────────────────────────
+export interface Message {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderEmoji: string;
+  text: string;
+  timestamp: number;
+  specialEffect?: 'poop_rain';
+}
+
+export async function sendMessage(
+  coupleId: string,
+  msg: Omit<Message, 'id'>,
+): Promise<string> {
+  const newRef = push(ref(db, `messages/${coupleId}`));
+  await set(newRef, { ...msg, id: newRef.key });
+  return newRef.key!;
+}
+
+export function subscribeToMessages(
+  coupleId: string,
+  callback: (messages: Message[]) => void,
+): () => void {
+  const q = query(ref(db, `messages/${coupleId}`), orderByChild('timestamp'), limitToLast(60));
+  return onValue(q, (snap) => {
+    if (!snap.exists()) { callback([]); return; }
+    const msgs = Object.values(snap.val() as Record<string, Message>);
+    msgs.sort((a, b) => a.timestamp - b.timestamp);
+    callback(msgs);
+  });
+}
+
+// ── Couple Events (countdowns) ─────────────────────────────────────────
+export interface CoupleEvent {
+  id: string;
+  emoji: string;
+  name: string;
+  dateStr: string;   // "MM-DD" for recurring, "YYYY-MM-DD" for one-time
+  recurring: boolean;
+}
+
+export async function saveCoupleEvent(
+  coupleId: string,
+  event: Omit<CoupleEvent, 'id'>,
+): Promise<string> {
+  const newRef = push(ref(db, `events/${coupleId}`));
+  await set(newRef, { ...event, id: newRef.key });
+  return newRef.key!;
+}
+
+export function subscribeToCoupleEvents(
+  coupleId: string,
+  callback: (events: CoupleEvent[]) => void,
+): () => void {
+  return onValue(ref(db, `events/${coupleId}`), (snap) => {
+    if (!snap.exists()) { callback([]); return; }
+    callback(Object.values(snap.val() as Record<string, CoupleEvent>));
+  });
+}
+
 // ── Couple ID (sorted uid pair) ────────────────────────────────────────
 export function getCoupleId(uid1: string, uid2: string): string {
   return [uid1, uid2].sort().join('_');
