@@ -145,111 +145,115 @@ export default function HistoryScreen() {
   const myRecord = computeRecord(sessions, myUid);
   const { data: weekData, dayLabels } = getWeeklyData(sessions, myUid, language, userProfile?.timezone);
 
+  const ListHeader = (
+    <View style={styles.header}>
+      <Text style={styles.title}>{t.statsTitle}</Text>
+
+      {/* Today counter */}
+      <View style={styles.todayCard}>
+        <Text style={styles.todayLabel}>{t.todayLabel}</Text>
+        <Text style={styles.todayCount}>{myTodayCount + partnerTodayCount}</Text>
+        <Text style={styles.todaySubLabel}>{t.poopCount}</Text>
+        <View style={styles.todayRow}>
+          <View style={styles.todayItem}>
+            <Text style={styles.todayItemEmoji}>{userProfile?.emoji}</Text>
+            <Text style={styles.todayItemName}>{userProfile?.displayName}</Text>
+            <Text style={styles.todayItemCount}>{myTodayCount} 💩</Text>
+          </View>
+          <View style={styles.todayDivider} />
+          <View style={styles.todayItem}>
+            <Text style={styles.todayItemEmoji}>💞</Text>
+            <Text style={styles.todayItemName}>{userProfile?.partnerName ?? '—'}</Text>
+            <Text style={styles.todayItemCount}>{partnerTodayCount} 💩</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* My stats */}
+      <View style={styles.statsRow}>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>🏆</Text>
+          <Text style={styles.statValue}>{myAllTime}</Text>
+          <Text style={styles.statLabel}>{t.myPoops}</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>⏱️</Text>
+          <Text style={styles.statValue}>{formatDuration(Math.round(myAvgDuration))}</Text>
+          <Text style={styles.statLabel}>{t.avgDuration}</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>🔥</Text>
+          <Text style={styles.statValue}>{myStreak}</Text>
+          <Text style={styles.statLabel}>{t.daysLabel}</Text>
+          <Text style={styles.statSubLabel}>{t.streakLabel}</Text>
+        </View>
+      </View>
+
+      {/* Partner stats */}
+      <View style={styles.statsRow}>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>💞</Text>
+          <Text style={styles.statValue}>{partnerAllTime}</Text>
+          <Text style={styles.statLabel}>{t.partnerPoops}</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>⏱️</Text>
+          <Text style={styles.statValue}>{formatDuration(Math.round(partnerAvgDuration))}</Text>
+          <Text style={styles.statLabel}>{t.partnerAvgDuration}</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>🔥</Text>
+          <Text style={styles.statValue}>{partnerStreak}</Text>
+          <Text style={styles.statLabel}>{t.daysLabel}</Text>
+          <Text style={styles.statSubLabel}>{t.partnerStreakLabel}</Text>
+        </View>
+      </View>
+
+      {/* Couple streak + record */}
+      <View style={styles.statsRow}>
+        <View style={[styles.statCard, styles.coupleCard]}>
+          <Text style={styles.statIcon}>💑</Text>
+          <Text style={[styles.statValue, { color: colors.primary }]}>{coupleStreak}</Text>
+          <Text style={styles.statLabel}>{t.bothDays}</Text>
+          <Text style={styles.statSubLabel}>{t.coupleStreakLabel}</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>📅</Text>
+          <Text style={styles.statValue}>{myRecord}</Text>
+          <Text style={styles.statLabel}>{t.maxPerDay}</Text>
+          <Text style={styles.statSubLabel}>{t.recordLabel}</Text>
+        </View>
+      </View>
+
+      <WeeklyChart data={weekData} dayLabels={dayLabels} />
+
+      <Text style={styles.sectionTitle}>{t.recentHistory}</Text>
+
+      {loading && <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 20, marginBottom: 20 }} />}
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
-        <Text style={styles.title}>{t.statsTitle}</Text>
-
-        {/* Today counter */}
-        <View style={styles.todayCard}>
-          <Text style={styles.todayLabel}>{t.todayLabel}</Text>
-          <Text style={styles.todayCount}>{myTodayCount + partnerTodayCount}</Text>
-          <Text style={styles.todaySubLabel}>{t.poopCount}</Text>
-          <View style={styles.todayRow}>
-            <View style={styles.todayItem}>
-              <Text style={styles.todayItemEmoji}>{userProfile?.emoji}</Text>
-              <Text style={styles.todayItemName}>{userProfile?.displayName}</Text>
-              <Text style={styles.todayItemCount}>{myTodayCount} 💩</Text>
+      <FlatList
+        data={loading ? [] : sessions}
+        keyExtractor={item => item.id}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
+        ListHeaderComponent={ListHeader}
+        ListEmptyComponent={
+          !loading ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyEmoji}>🚽</Text>
+              <Text style={styles.emptyText}>{t.noHistory}</Text>
+              <Text style={styles.emptySubtext}>{t.goFirst}</Text>
             </View>
-            <View style={styles.todayDivider} />
-            <View style={styles.todayItem}>
-              <Text style={styles.todayItemEmoji}>💞</Text>
-              <Text style={styles.todayItemName}>{userProfile?.partnerName ?? '—'}</Text>
-              <Text style={styles.todayItemCount}>{partnerTodayCount} 💩</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* My stats */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statIcon}>🏆</Text>
-            <Text style={styles.statValue}>{myAllTime}</Text>
-            <Text style={styles.statLabel}>{t.myPoops}</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statIcon}>⏱️</Text>
-            <Text style={styles.statValue}>{formatDuration(Math.round(myAvgDuration))}</Text>
-            <Text style={styles.statLabel}>{t.avgDuration}</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statIcon}>🔥</Text>
-            <Text style={styles.statValue}>{myStreak}</Text>
-            <Text style={styles.statLabel}>{t.daysLabel}</Text>
-            <Text style={styles.statSubLabel}>{t.streakLabel}</Text>
-          </View>
-        </View>
-
-        {/* Partner stats */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statIcon}>💞</Text>
-            <Text style={styles.statValue}>{partnerAllTime}</Text>
-            <Text style={styles.statLabel}>{t.partnerPoops}</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statIcon}>⏱️</Text>
-            <Text style={styles.statValue}>{formatDuration(Math.round(partnerAvgDuration))}</Text>
-            <Text style={styles.statLabel}>{t.partnerAvgDuration}</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statIcon}>🔥</Text>
-            <Text style={styles.statValue}>{partnerStreak}</Text>
-            <Text style={styles.statLabel}>{t.daysLabel}</Text>
-            <Text style={styles.statSubLabel}>{t.partnerStreakLabel}</Text>
-          </View>
-        </View>
-
-        {/* Couple streak + my record */}
-        <View style={styles.statsRow}>
-          <View style={[styles.statCard, styles.coupleCard]}>
-            <Text style={styles.statIcon}>💑</Text>
-            <Text style={[styles.statValue, { color: colors.primary }]}>{coupleStreak}</Text>
-            <Text style={styles.statLabel}>{t.bothDays}</Text>
-            <Text style={styles.statSubLabel}>{t.coupleStreakLabel}</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statIcon}>📅</Text>
-            <Text style={styles.statValue}>{myRecord}</Text>
-            <Text style={styles.statLabel}>{t.maxPerDay}</Text>
-            <Text style={styles.statSubLabel}>{t.recordLabel}</Text>
-          </View>
-        </View>
-
-        <WeeklyChart data={weekData} dayLabels={dayLabels} />
-
-        <Text style={styles.sectionTitle}>{t.recentHistory}</Text>
-
-        {loading ? (
-          <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
-        ) : sessions.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>🚽</Text>
-            <Text style={styles.emptyText}>{t.noHistory}</Text>
-            <Text style={styles.emptySubtext}>{t.goFirst}</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={sessions}
-            keyExtractor={item => item.id}
-            showsVerticalScrollIndicator={false}
-            style={{ flex: 1 }}
-            renderItem={({ item }) => (
-              <SessionRow session={item} isMe={item.userId === myUid} language={language} t={t} colors={colors} />
-            )}
-          />
+          ) : null
+        }
+        renderItem={({ item }) => (
+          <SessionRow session={item} isMe={item.userId === myUid} language={language} t={t} colors={colors} />
         )}
-      </View>
+      />
     </SafeAreaView>
   );
 }
@@ -290,7 +294,8 @@ function SessionRow({ session, isMe, language, t, colors }: {
 function makeStyles(c: ColorScheme) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: c.background },
-    container: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
+    header: { paddingHorizontal: 16, paddingTop: 16 },
+    listContent: { paddingHorizontal: 16, paddingBottom: 32 },
     title: { fontSize: 24, fontWeight: '800', color: c.secondary, marginBottom: 16, paddingTop: 8 },
     todayCard: {
       backgroundColor: c.accent, borderRadius: 20, padding: 20, alignItems: 'center',
