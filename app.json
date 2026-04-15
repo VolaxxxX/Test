@@ -8,7 +8,7 @@
     "scheme": "pooptracker",
     "userInterfaceStyle": "automatic",
     "platforms": ["ios", "android"],
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.coupleapp.pooptracker",
