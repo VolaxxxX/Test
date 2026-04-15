@@ -1,10 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text } from 'react-native';
 
 interface Props {
   percent: number;      // 0–100
   size?: number;
-  thickness?: number;
   fillColor: string;
   bgColor: string;
   centerValue: string;
@@ -12,18 +11,16 @@ interface Props {
   labelColor?: string;
 }
 
+const TOTAL_DOTS = 60;
+
 /**
- * Pure-RN circular progress ring using the half-circle rotation technique.
- * No SVG required.
- *
- * Math:
- *   rightAngle = -180 + clamp(percent, 0, 50) * 3.6   (reveals right arc 0→50%)
- *   leftAngle  = -180 + clamp(percent-50, 0, 50) * 3.6 (reveals left arc 50→100%)
+ * Dot-ring circular progress.
+ * 60 dots arranged in a circle — reliable on both iOS and Android,
+ * no overflow/clip issues.
  */
 export function CircularProgress({
   percent,
   size = 110,
-  thickness = 12,
   fillColor,
   bgColor,
   centerValue,
@@ -31,47 +28,37 @@ export function CircularProgress({
   labelColor,
 }: Props) {
   const p = Math.max(0, Math.min(100, percent));
-  const half = size / 2;
-
-  const rightAngle = -180 + Math.min(p, 50) * 3.6;
-  const leftAngle  = -180 + Math.max(0, p - 50) * 3.6;
-
-  const circleStyle = {
-    position: 'absolute' as const,
-    width: size,
-    height: size,
-    borderRadius: half,
-    borderWidth: thickness,
-    borderColor: fillColor,
-  };
+  const dotSize = Math.max(5, Math.round(size * 0.075));
+  const radius = size / 2 - dotSize / 2 - 1;
+  const filledDots = Math.round((p / 100) * TOTAL_DOTS);
 
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      {/* Background ring */}
-      <View style={[circleStyle, { borderColor: bgColor }]} />
+      {Array.from({ length: TOTAL_DOTS }, (_, i) => {
+        const angle = (i / TOTAL_DOTS) * 2 * Math.PI - Math.PI / 2; // top = 0
+        const x = size / 2 + radius * Math.cos(angle) - dotSize / 2;
+        const y = size / 2 + radius * Math.sin(angle) - dotSize / 2;
+        return (
+          <View
+            key={i}
+            style={{
+              position: 'absolute',
+              left: x,
+              top: y,
+              width: dotSize,
+              height: dotSize,
+              borderRadius: dotSize / 2,
+              backgroundColor: i < filledDots ? fillColor : bgColor,
+            }}
+          />
+        );
+      })}
 
-      {/* Right half reveal */}
-      <View style={{ position: 'absolute', width: size, height: size, overflow: 'hidden' }}>
-        <View style={{ position: 'absolute', top: 0, right: 0, width: half, height: size, overflow: 'hidden' }}>
-          <View style={[circleStyle, { transform: [{ rotate: `${rightAngle}deg` }] }]} />
-        </View>
-      </View>
-
-      {/* Left half reveal (only when > 50%) */}
-      {p > 50 && (
-        <View style={{ position: 'absolute', width: size, height: size, overflow: 'hidden' }}>
-          <View style={{ position: 'absolute', top: 0, left: 0, width: half, height: size, overflow: 'hidden' }}>
-            <View style={[circleStyle, { transform: [{ rotate: `${leftAngle}deg` }] }]} />
-          </View>
-        </View>
-      )}
-
-      {/* Center text */}
-      <Text style={{ fontSize: 16, fontWeight: '800', color: labelColor ?? fillColor }}>
+      <Text style={{ fontSize: size * 0.145, fontWeight: '800', color: labelColor ?? fillColor, textAlign: 'center' }}>
         {centerValue}
       </Text>
       {centerLabel ? (
-        <Text style={{ fontSize: 9, color: labelColor ?? fillColor, opacity: 0.7, textAlign: 'center', maxWidth: size * 0.6 }}>
+        <Text style={{ fontSize: size * 0.079, color: labelColor ?? fillColor, opacity: 0.65, textAlign: 'center', maxWidth: size * 0.58 }}>
           {centerLabel}
         </Text>
       ) : null}

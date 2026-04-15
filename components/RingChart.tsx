@@ -8,15 +8,16 @@ interface Props {
   myLabel: string;
   partnerLabel: string;
   size?: number;
-  thickness?: number;
   centerLabel?: string;
   textColor?: string;
 }
 
+const TOTAL_DOTS = 60;
+
 /**
- * Two-segment donut chart using half-circle rotation.
- * Background ring = partnerColor (100% filled).
- * Foreground overlay = myColor for myPercent.
+ * Two-color dot-ring chart.
+ * Dots 0..myPercent% → myColor, rest → partnerColor.
+ * Starts at top, goes clockwise.
  */
 export function RingChart({
   myPercent,
@@ -25,48 +26,39 @@ export function RingChart({
   myLabel,
   partnerLabel,
   size = 130,
-  thickness = 14,
   centerLabel,
   textColor = '#333',
 }: Props) {
   const p = Math.max(0, Math.min(100, myPercent));
-  const half = size / 2;
   const partnerPercent = 100 - p;
-
-  const rightAngle = -180 + Math.min(p, 50) * 3.6;
-  const leftAngle  = -180 + Math.max(0, p - 50) * 3.6;
-
-  const circleStyle = {
-    position: 'absolute' as const,
-    width: size, height: size,
-    borderRadius: half,
-    borderWidth: thickness,
-  };
+  const dotSize = Math.max(6, Math.round(size * 0.075));
+  const radius = size / 2 - dotSize / 2 - 1;
+  const myDots = Math.round((p / 100) * TOTAL_DOTS);
 
   return (
     <View style={{ alignItems: 'center' }}>
       <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-        {/* Partner color background (full ring) */}
-        <View style={[circleStyle, { borderColor: partnerColor }]} />
+        {Array.from({ length: TOTAL_DOTS }, (_, i) => {
+          const angle = (i / TOTAL_DOTS) * 2 * Math.PI - Math.PI / 2;
+          const x = size / 2 + radius * Math.cos(angle) - dotSize / 2;
+          const y = size / 2 + radius * Math.sin(angle) - dotSize / 2;
+          return (
+            <View
+              key={i}
+              style={{
+                position: 'absolute',
+                left: x,
+                top: y,
+                width: dotSize,
+                height: dotSize,
+                borderRadius: dotSize / 2,
+                backgroundColor: i < myDots ? myColor : partnerColor,
+              }}
+            />
+          );
+        })}
 
-        {/* My color overlay — right half */}
-        <View style={{ position: 'absolute', width: size, height: size, overflow: 'hidden' }}>
-          <View style={{ position: 'absolute', top: 0, right: 0, width: half, height: size, overflow: 'hidden' }}>
-            <View style={[circleStyle, { borderColor: myColor, transform: [{ rotate: `${rightAngle}deg` }] }]} />
-          </View>
-        </View>
-
-        {/* My color overlay — left half (> 50%) */}
-        {p > 50 && (
-          <View style={{ position: 'absolute', width: size, height: size, overflow: 'hidden' }}>
-            <View style={{ position: 'absolute', top: 0, left: 0, width: half, height: size, overflow: 'hidden' }}>
-              <View style={[circleStyle, { borderColor: myColor, transform: [{ rotate: `${leftAngle}deg` }] }]} />
-            </View>
-          </View>
-        )}
-
-        {/* Center */}
-        <Text style={{ fontSize: 13, fontWeight: '800', color: textColor, textAlign: 'center' }}>
+        <Text style={{ fontSize: size * 0.12, fontWeight: '800', color: textColor, textAlign: 'center' }}>
           {centerLabel}
         </Text>
       </View>

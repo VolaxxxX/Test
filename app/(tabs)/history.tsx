@@ -313,7 +313,7 @@ export default function HistoryScreen() {
               myLabel={userProfile?.displayName ?? 'Moi'}
               partnerLabel={userProfile?.partnerName ?? '?'}
               textColor={colors.secondary}
-              size={110} thickness={12}
+              size={110}
               centerLabel={`${totalCouple}`}
             />
           </View>
