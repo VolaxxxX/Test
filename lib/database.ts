@@ -16,6 +16,7 @@ export interface User {
   darkMode?: boolean;
   partnerTimezone?: string;
   themeColor?: string;
+  achievements?: Record<string, number>; // achievementId → unlockedAt timestamp
 }
 
 export interface PoopSession {
@@ -123,6 +124,10 @@ export async function savePoopSession(coupleId: string, session: Omit<PoopSessio
 
 export async function updateSessionReaction(coupleId: string, sessionId: string, reaction: string) {
   await update(ref(db, `history/${coupleId}/${sessionId}`), { reaction });
+}
+
+export async function unlockAchievement(uid: string, achievementId: string) {
+  await update(ref(db, `users/${uid}/achievements`), { [achievementId]: Date.now() });
 }
 
 export async function updateSessionQuality(

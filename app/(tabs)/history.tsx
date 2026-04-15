@@ -14,6 +14,8 @@ import { useHistory } from '@/lib/useHistory';
 import { PoopSession, getCoupleId, updateSessionReaction } from '@/lib/database';
 import { EmojiReactPicker } from '@/components/EmojiReactPicker';
 import { WeeklyChart } from '@/components/WeeklyChart';
+import { MonthlyChart } from '@/components/MonthlyChart';
+import { WeeklyInsights } from '@/components/WeeklyInsights';
 import { CalendarView } from '@/components/CalendarView';
 import { AnimatedNumber } from '@/components/AnimatedNumber';
 import { CircularProgress } from '@/components/CircularProgress';
@@ -268,6 +270,35 @@ export default function HistoryScreen() {
       </View>
 
       <WeeklyChart data={weekData} dayLabels={dayLabels} />
+
+      {/* Weekly insights */}
+      <WeeklyInsights
+        sessions={sessions}
+        myUid={myUid}
+        partnerUid={partnerUid}
+        myName={userProfile?.displayName ?? 'Moi'}
+        partnerName={userProfile?.partnerName ?? '?'}
+        colors={colors}
+        language={language}
+        timezone={userProfile?.timezone}
+      />
+
+      {/* Monthly chart */}
+      <View style={styles.monthCard}>
+        <Text style={styles.ringLabel}>
+          {language === 'fr' ? '📅 Ce mois — jour par jour' : '📅 This month — day by day'}
+        </Text>
+        <MonthlyChart
+          sessions={sessions}
+          myUid={myUid}
+          partnerUid={partnerUid}
+          myName={userProfile?.displayName ?? 'Moi'}
+          partnerName={userProfile?.partnerName ?? '?'}
+          colors={colors}
+          language={language}
+          timezone={userProfile?.timezone}
+        />
+      </View>
 
       {/* Advanced stats row */}
       <View style={styles.statsRow}>
