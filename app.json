@@ -42,6 +42,10 @@
       ],
       "expo-asset"
     ],
+    "updates": {
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 3000
+    },
     "runtimeVersion": {
       "policy": "sdkVersion"
     },
