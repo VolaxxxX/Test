@@ -43,8 +43,14 @@
       "expo-asset"
     ],
     "updates": {
+      "url": "https://u.expo.dev/9a53a974-5ef3-43fa-97ac-4ce5bc60a944",
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 3000
+    },
+    "extra": {
+      "eas": {
+        "projectId": "9a53a974-5ef3-43fa-97ac-4ce5bc60a944"
+      }
     },
     "runtimeVersion": {
       "policy": "sdkVersion"
