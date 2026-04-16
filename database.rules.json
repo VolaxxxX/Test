@@ -15,6 +15,17 @@
       "$coupleId": {
         ".indexOn": ["startTime", "date"]
       }
+    },
+    "messages": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$coupleId": {
+        ".indexOn": ["timestamp"]
+      }
+    },
+    "events": {
+      ".read": "auth != null",
+      ".write": "auth != null"
     }
   }
 }
