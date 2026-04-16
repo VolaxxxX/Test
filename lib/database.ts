@@ -190,6 +190,7 @@ export interface Message {
   text: string;
   timestamp: number;
   specialEffect?: 'poop_rain';
+  readBy?: Record<string, number>; // uid → timestamp
 }
 
 export async function sendMessage(
@@ -199,6 +200,20 @@ export async function sendMessage(
   const newRef = push(ref(db, `messages/${coupleId}`));
   await set(newRef, { ...msg, id: newRef.key });
   return newRef.key!;
+}
+
+export async function markMessagesRead(coupleId: string, readerUid: string): Promise<void> {
+  const q = query(ref(db, `messages/${coupleId}`), orderByChild('timestamp'), limitToLast(60));
+  const snap = await get(q);
+  if (!snap.exists()) return;
+  const updates: Record<string, number> = {};
+  snap.forEach(child => {
+    const msg = child.val() as Message;
+    if (msg.senderId !== readerUid && !msg.readBy?.[readerUid]) {
+      updates[`messages/${coupleId}/${child.key}/readBy/${readerUid}`] = Date.now();
+    }
+  });
+  if (Object.keys(updates).length > 0) await update(ref(db), updates);
 }
 
 export function subscribeToMessages(

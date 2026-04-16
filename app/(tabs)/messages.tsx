@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/lib/auth-context';
 import { useColors } from '@/lib/useColors';
 import { getT } from '@/lib/i18n';
-import { getCoupleId, sendMessage, subscribeToMessages } from '@/lib/database';
+import { getCoupleId, sendMessage, subscribeToMessages, markMessagesRead } from '@/lib/database';
 import type { Message } from '@/lib/database';
 
 const { width: SW, height: SH } = Dimensions.get('window');
@@ -159,12 +159,14 @@ function EmojiPicker({ visible, onClose, onSelect }: EmojiPickerProps) {
 interface BubbleProps {
   msg: Message;
   isMine: boolean;
+  partnerId: string;
   colors: ReturnType<typeof useColors>;
 }
 
-function Bubble({ msg, isMine, colors }: BubbleProps) {
+function Bubble({ msg, isMine, partnerId, colors }: BubbleProps) {
   const time = new Date(msg.timestamp);
   const timeStr = `${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}`;
+  const isRead = isMine && !!msg.readBy?.[partnerId];
 
   return (
     <View style={{
@@ -199,15 +201,14 @@ function Bubble({ msg, isMine, colors }: BubbleProps) {
           {msg.text}
         </Text>
       </View>
-      <Text style={{
-        fontSize: 10,
-        color: colors.gray,
-        marginTop: 3,
-        alignSelf: isMine ? 'flex-end' : 'flex-start',
-        marginHorizontal: 4,
-      }}>
-        {timeStr}
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: isMine ? 'flex-end' : 'flex-start', marginHorizontal: 4, marginTop: 3, gap: 4 }}>
+        <Text style={{ fontSize: 10, color: colors.gray }}>{timeStr}</Text>
+        {isMine && (
+          <Text style={{ fontSize: 11, color: isRead ? colors.primary : colors.gray }}>
+            {isRead ? '✓✓' : '✓'}
+          </Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -236,6 +237,13 @@ export default function MessagesScreen() {
     if (!coupleId) return;
     return subscribeToMessages(coupleId, setMessages);
   }, [coupleId]);
+
+  // Mark partner messages as read when they arrive
+  useEffect(() => {
+    if (coupleId && uid && messages.some(m => m.senderId !== uid && !m.readBy?.[uid])) {
+      markMessagesRead(coupleId, uid).catch(() => {});
+    }
+  }, [messages, coupleId, uid]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -349,7 +357,7 @@ export default function MessagesScreen() {
         keyExtractor={item => item.id}
         contentContainerStyle={{ paddingTop: 12, paddingBottom: 8 }}
         renderItem={({ item }) => (
-          <Bubble msg={item} isMine={item.senderId === uid} colors={colors} />
+          <Bubble msg={item} isMine={item.senderId === uid} partnerId={partnerId} colors={colors} />
         )}
         ListEmptyComponent={
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 }}>
