@@ -266,7 +266,7 @@ function UnlockBanner({ ach, colors, language, onDone }: { ach: AchievementDef; 
 function GamesContent({ sessions, myUid, partnerUid, tz, language, myName, partnerName, userEmoji, achievements, colors }: {
   sessions: PoopSession[]; myUid: string; partnerUid: string; tz: string;
   language: string; myName: string; partnerName: string; userEmoji: string;
-  achievements: Record<string, boolean>; colors: ColorScheme;
+  achievements: Record<string, number>; colors: ColorScheme;
 }) {
   const fr = language === 'fr';
   const processedRef = useRef(new Set<string>());
