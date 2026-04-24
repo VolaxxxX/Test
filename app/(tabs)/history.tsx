@@ -12,7 +12,8 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { useColors } from '@/lib/useColors';
 import { useHistory } from '@/lib/useHistory';
-import { PoopSession, getCoupleId, updateSessionReaction } from '@/lib/database';
+import { PoopSession, getCoupleId, updateSessionReaction, updateSessionDuration } from '@/lib/database';
+import { Modal } from 'react-native';
 import { EmojiReactPicker } from '@/components/EmojiReactPicker';
 import { WeeklyChart } from '@/components/WeeklyChart';
 import { MonthlyChart } from '@/components/MonthlyChart';
@@ -134,6 +135,9 @@ export default function HistoryScreen() {
   const t = getT(language);
 
   const [reactingSession, setReactingSession] = useState<PoopSession | null>(null);
+  const [editingSession, setEditingSession] = useState<PoopSession | null>(null);
+  const [editMin, setEditMin] = useState('');
+  const [editSec, setEditSec] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPeriod, setFilterPeriod] = useState<'all' | 'today' | 'week' | 'month'>('all');
 
@@ -488,8 +492,62 @@ export default function HistoryScreen() {
     setReactingSession(null);
   };
 
+  const handleEditOpen = (session: PoopSession) => {
+    const cur = session.duration ?? 0;
+    setEditMin(String(Math.floor(cur / 60)));
+    setEditSec(String(cur % 60));
+    setEditingSession(session);
+  };
+
+  const handleEditSave = async () => {
+    if (!editingSession || !coupleId) return;
+    const total = (parseInt(editMin, 10) || 0) * 60 + (parseInt(editSec, 10) || 0);
+    try { await updateSessionDuration(coupleId, editingSession.id, total); } catch {}
+    setEditingSession(null);
+  };
+
+  const fr = language === 'fr';
+
   return (
     <SafeAreaView style={styles.safe}>
+      {/* Edit duration modal */}
+      <Modal visible={!!editingSession} transparent animationType="fade" onRequestClose={() => setEditingSession(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+          <View style={{ backgroundColor: colors.cardBg, borderRadius: 22, padding: 24, width: '100%' }}>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: colors.secondary, marginBottom: 18, textAlign: 'center' }}>
+              ✏️ {fr ? 'Modifier la durée' : 'Edit duration'}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}>
+              <View style={{ alignItems: 'center' }}>
+                <TextInput
+                  value={editMin} onChangeText={setEditMin} keyboardType="number-pad"
+                  style={{ backgroundColor: colors.lightGray, borderRadius: 12, padding: 12, fontSize: 28, fontWeight: '800', color: colors.secondary, width: 80, textAlign: 'center' }}
+                  maxLength={3}
+                />
+                <Text style={{ fontSize: 11, color: colors.textLight, marginTop: 4 }}>{fr ? 'minutes' : 'minutes'}</Text>
+              </View>
+              <Text style={{ fontSize: 28, fontWeight: '800', color: colors.secondary, marginBottom: 18 }}>:</Text>
+              <View style={{ alignItems: 'center' }}>
+                <TextInput
+                  value={editSec} onChangeText={setEditSec} keyboardType="number-pad"
+                  style={{ backgroundColor: colors.lightGray, borderRadius: 12, padding: 12, fontSize: 28, fontWeight: '800', color: colors.secondary, width: 80, textAlign: 'center' }}
+                  maxLength={2}
+                />
+                <Text style={{ fontSize: 11, color: colors.textLight, marginTop: 4 }}>{fr ? 'secondes' : 'seconds'}</Text>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity onPress={() => setEditingSession(null)} style={{ flex: 1, padding: 14, borderRadius: 14, backgroundColor: colors.lightGray, alignItems: 'center' }}>
+                <Text style={{ fontWeight: '700', color: colors.gray }}>{fr ? 'Annuler' : 'Cancel'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleEditSave} style={{ flex: 1, padding: 14, borderRadius: 14, backgroundColor: colors.primary, alignItems: 'center' }}>
+                <Text style={{ fontWeight: '800', color: colors.white }}>{fr ? 'Enregistrer' : 'Save'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <EmojiReactPicker
         visible={!!reactingSession}
         onSelect={handleReact}
@@ -528,6 +586,7 @@ export default function HistoryScreen() {
             t={t}
             colors={colors}
             onReact={item.userId !== myUid ? () => setReactingSession(item) : undefined}
+            onEditDuration={item.userId === myUid ? () => handleEditOpen(item) : undefined}
           />
         )}
       />
@@ -535,10 +594,11 @@ export default function HistoryScreen() {
   );
 }
 
-function SessionRow({ session, isMe, language, t, colors, onReact }: {
+function SessionRow({ session, isMe, language, t, colors, onReact, onEditDuration }: {
   session: PoopSession; isMe: boolean; language: Language;
   t: ReturnType<typeof getT>; colors: ColorScheme;
   onReact?: () => void;
+  onEditDuration?: () => void;
 }) {
   return (
     <View style={{
@@ -581,9 +641,14 @@ function SessionRow({ session, isMe, language, t, colors, onReact }: {
           ) : null}
         </View>
       </View>
-      <View style={{ alignItems: 'flex-end' }}>
+      <View style={{ alignItems: 'flex-end', gap: 4 }}>
         <Text style={{ fontSize: 15, fontWeight: '800', color: colors.primary }}>{formatDuration(session.duration)}</Text>
         <Text style={{ fontSize: 10, color: colors.textLight }}>{t.durationLabel}</Text>
+        {onEditDuration && (
+          <TouchableOpacity onPress={onEditDuration} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={{ fontSize: 16 }}>✏️</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );

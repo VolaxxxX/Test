@@ -202,6 +202,10 @@ export async function sendMessage(
   return newRef.key!;
 }
 
+export async function updateSessionDuration(coupleId: string, sessionId: string, durationSeconds: number) {
+  await update(ref(db, `history/${coupleId}/${sessionId}`), { duration: durationSeconds });
+}
+
 export async function markMessagesRead(coupleId: string, readerUid: string): Promise<void> {
   const q = query(ref(db, `messages/${coupleId}`), orderByChild('timestamp'), limitToLast(60));
   const snap = await get(q);
