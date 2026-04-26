@@ -522,7 +522,7 @@ export default function HistoryScreen() {
                 <TextInput
                   value={editMin} onChangeText={setEditMin} keyboardType="number-pad"
                   style={{ backgroundColor: colors.lightGray, borderRadius: 12, padding: 12, fontSize: 28, fontWeight: '800', color: colors.secondary, width: 80, textAlign: 'center' }}
-                  maxLength={3}
+                  maxLength={5}
                 />
                 <Text style={{ fontSize: 11, color: colors.textLight, marginTop: 4 }}>{fr ? 'minutes' : 'minutes'}</Text>
               </View>

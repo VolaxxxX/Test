@@ -142,7 +142,7 @@ export function subscribeToHistory(
   coupleId: string,
   callback: (sessions: PoopSession[]) => void
 ) {
-  const r = query(ref(db, `history/${coupleId}`), orderByChild('startTime'), limitToLast(100));
+  const r = query(ref(db, `history/${coupleId}`), orderByChild('startTime'), limitToLast(1000));
   return onValue(r, (snap) => {
     if (!snap.exists()) {
       callback([]);
