@@ -126,6 +126,10 @@ export async function updateSessionReaction(coupleId: string, sessionId: string,
   await update(ref(db, `history/${coupleId}/${sessionId}`), { reaction });
 }
 
+export async function deletePoopSession(coupleId: string, sessionId: string) {
+  await set(ref(db, `history/${coupleId}/${sessionId}`), null);
+}
+
 export async function unlockAchievement(uid: string, achievementId: string) {
   await update(ref(db, `users/${uid}/achievements`), { [achievementId]: Date.now() });
 }

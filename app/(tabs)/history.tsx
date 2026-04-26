@@ -8,11 +8,12 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   TextInput,
+  Alert,
 } from 'react-native';
 import { useAuth } from '@/lib/auth-context';
 import { useColors } from '@/lib/useColors';
 import { useHistory } from '@/lib/useHistory';
-import { PoopSession, getCoupleId, updateSessionReaction, updateSessionDuration } from '@/lib/database';
+import { PoopSession, getCoupleId, updateSessionReaction, updateSessionDuration, deletePoopSession } from '@/lib/database';
 import { Modal } from 'react-native';
 import { EmojiReactPicker } from '@/components/EmojiReactPicker';
 import { WeeklyChart } from '@/components/WeeklyChart';
@@ -596,6 +597,19 @@ export default function HistoryScreen() {
             colors={colors}
             onReact={item.userId !== myUid ? () => setReactingSession(item) : undefined}
             onEditDuration={item.userId === myUid ? () => handleEditOpen(item) : undefined}
+            onDelete={item.userId === myUid ? () => {
+              Alert.alert(
+                fr ? 'Supprimer ce poop ?' : 'Delete this poop?',
+                fr ? 'Cette action est irréversible.' : 'This cannot be undone.',
+                [
+                  { text: fr ? 'Annuler' : 'Cancel', style: 'cancel' },
+                  { text: fr ? 'Supprimer' : 'Delete', style: 'destructive', onPress: async () => {
+                    if (!coupleId) return;
+                    try { await deletePoopSession(coupleId, item.id); } catch {}
+                  }},
+                ],
+              );
+            } : undefined}
           />
         )}
       />
@@ -603,11 +617,12 @@ export default function HistoryScreen() {
   );
 }
 
-function SessionRow({ session, isMe, language, t, colors, onReact, onEditDuration }: {
+function SessionRow({ session, isMe, language, t, colors, onReact, onEditDuration, onDelete }: {
   session: PoopSession; isMe: boolean; language: Language;
   t: ReturnType<typeof getT>; colors: ColorScheme;
   onReact?: () => void;
   onEditDuration?: () => void;
+  onDelete?: () => void;
 }) {
   return (
     <View style={{
@@ -656,6 +671,11 @@ function SessionRow({ session, isMe, language, t, colors, onReact, onEditDuratio
         {onEditDuration && (
           <TouchableOpacity onPress={onEditDuration} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Text style={{ fontSize: 16 }}>✏️</Text>
+          </TouchableOpacity>
+        )}
+        {onDelete && (
+          <TouchableOpacity onPress={onDelete} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={{ fontSize: 16 }}>🗑️</Text>
           </TouchableOpacity>
         )}
       </View>
