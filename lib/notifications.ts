@@ -16,6 +16,27 @@ Notifications.setNotificationHandler({
 
 export async function registerForPushNotifications(uid: string): Promise<void> {
   try {
+    // Channels MUST be set up BEFORE requesting the token on Android.
+    // FCM uses these channels to deliver notifications when app is killed/background.
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        sound: 'default',
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#8B4513',
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+      });
+      await Notifications.setNotificationChannelAsync('poop', {
+        name: 'PoopTracker',
+        importance: Notifications.AndroidImportance.MAX,
+        sound: 'default',
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#8B4513',
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+      });
+    }
+
     const { status: existing } = await Notifications.getPermissionsAsync();
     let finalStatus = existing;
     if (existing !== 'granted') {
@@ -27,22 +48,13 @@ export async function registerForPushNotifications(uid: string): Promise<void> {
     const projectId =
       Constants.expoConfig?.extra?.eas?.projectId ??
       (Constants as any).easConfig?.projectId;
-    const tokenData = await Notifications.getExpoPushTokenAsync(
-      projectId ? { projectId } : {}
-    );
+    if (!projectId) return;
+
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
     const pushToken = tokenData.data;
 
     // Store token in Firebase
     await update(ref(db, `users/${uid}`), { pushToken });
-
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('poop', {
-        name: 'PoopTracker',
-        importance: Notifications.AndroidImportance.HIGH,
-        sound: 'default',
-        vibrationPattern: [0, 250, 250, 250],
-      });
-    }
   } catch {
     // Silently fail — notifications are optional
   }
@@ -67,6 +79,8 @@ export async function sendPushNotification(
         title,
         body,
         channelId: 'poop',
+        priority: 'high',
+        _displayInForeground: true,
       }),
     });
   } catch {
