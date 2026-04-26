@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -15,15 +15,54 @@ import { getT, POOP_EMOJIS } from '@/lib/i18n';
 import type { Language } from '@/lib/i18n';
 import type { ColorScheme } from '@/constants/Colors';
 import { THEME_COLORS } from '@/constants/Colors';
+import { registerForPushNotifications, sendPushNotification } from '@/lib/notifications';
+import { getUser } from '@/lib/database';
 
 export default function ProfileScreen() {
-  const { userProfile, signOut, updateLanguage, updatePoopEmoji, updateDarkMode, updateThemeColor } = useAuth();
+  const { userProfile, firebaseUser, signOut, updateLanguage, updatePoopEmoji, updateDarkMode, updateThemeColor } = useAuth();
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const [notifLoading, setNotifLoading] = useState(false);
 
   const language = userProfile?.language ?? 'fr';
   const t = getT(language);
   const isDark = userProfile?.darkMode ?? false;
+  const fr = language === 'fr';
+
+  const handleForceRegisterNotif = async () => {
+    if (!firebaseUser) return;
+    setNotifLoading(true);
+    try {
+      await registerForPushNotifications(firebaseUser.uid);
+      // Re-fetch to see if token was saved
+      const profile = await getUser(firebaseUser.uid);
+      if (profile?.pushToken) {
+        Alert.alert('✅ OK', fr ? `Token enregistré !\n${profile.pushToken.slice(0, 30)}...` : `Token registered!\n${profile.pushToken.slice(0, 30)}...`);
+      } else {
+        Alert.alert('❌', fr ? 'Échec — aucun token. Vérifiez les permissions.' : 'Failed — no token. Check permissions.');
+      }
+    } catch (e) {
+      Alert.alert('Erreur', String(e));
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
+  const handleTestNotif = async () => {
+    if (!userProfile?.pushToken) {
+      Alert.alert('❌', fr ? 'Pas de token — appuie d\'abord sur "Forcer".' : 'No token — press "Force" first.');
+      return;
+    }
+    setNotifLoading(true);
+    try {
+      await sendPushNotification(userProfile.pushToken, '🧪 Test', fr ? 'Tu reçois bien les notifs !' : 'Notifications work!');
+      Alert.alert('📤', fr ? 'Notif envoyée ! Ferme l\'app et attends.' : 'Sent! Close the app and wait.');
+    } catch {
+      Alert.alert('❌', fr ? 'Erreur envoi' : 'Send error');
+    } finally {
+      setNotifLoading(false);
+    }
+  };
 
   const handleSignOut = () => {
     Alert.alert(t.confirmSignOut, t.confirmSignOutBody, [
@@ -153,6 +192,39 @@ export default function ProfileScreen() {
                 <Text style={styles.infoText}>{step}</Text>
               </View>
             ))}
+          </View>
+        </View>
+
+        {/* Notifications debug */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>{fr ? 'Notifications' : 'Notifications'}</Text>
+          <View style={[styles.infoCard, { gap: 12 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ fontSize: 16 }}>{userProfile?.pushToken ? '✅' : '❌'}</Text>
+              <Text style={{ fontSize: 13, color: colors.text, flex: 1 }}>
+                {userProfile?.pushToken
+                  ? (fr ? 'Token push enregistré' : 'Push token registered')
+                  : (fr ? 'Aucun token — notifications désactivées' : 'No token — notifications disabled')}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: colors.primary, opacity: notifLoading ? 0.6 : 1 }]}
+              onPress={handleForceRegisterNotif}
+              disabled={notifLoading}
+            >
+              <Text style={styles.actionBtnText}>
+                {fr ? '🔔 Forcer l\'enregistrement' : '🔔 Force register'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: colors.secondary, opacity: notifLoading ? 0.6 : 1 }]}
+              onPress={handleTestNotif}
+              disabled={notifLoading}
+            >
+              <Text style={styles.actionBtnText}>
+                {fr ? '🧪 Tester une notification' : '🧪 Test notification'}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
