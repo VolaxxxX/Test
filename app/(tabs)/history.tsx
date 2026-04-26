@@ -136,6 +136,7 @@ export default function HistoryScreen() {
 
   const [reactingSession, setReactingSession] = useState<PoopSession | null>(null);
   const [editingSession, setEditingSession] = useState<PoopSession | null>(null);
+  const [editHour, setEditHour] = useState('');
   const [editMin, setEditMin] = useState('');
   const [editSec, setEditSec] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -494,19 +495,30 @@ export default function HistoryScreen() {
 
   const handleEditOpen = (session: PoopSession) => {
     const cur = session.duration ?? 0;
-    setEditMin(String(Math.floor(cur / 60)));
+    setEditHour(String(Math.floor(cur / 3600)));
+    setEditMin(String(Math.floor((cur % 3600) / 60)));
     setEditSec(String(cur % 60));
     setEditingSession(session);
   };
 
   const handleEditSave = async () => {
     if (!editingSession || !coupleId) return;
-    const total = (parseInt(editMin, 10) || 0) * 60 + (parseInt(editSec, 10) || 0);
+    const total = (parseInt(editHour, 10) || 0) * 3600
+                + (parseInt(editMin,  10) || 0) * 60
+                + (parseInt(editSec,  10) || 0);
     try { await updateSessionDuration(coupleId, editingSession.id, total); } catch {}
     setEditingSession(null);
   };
 
   const fr = language === 'fr';
+
+  const inputStyle = {
+    backgroundColor: colors.lightGray, borderRadius: 12, padding: 12,
+    fontSize: 26, fontWeight: '800' as const, color: colors.secondary,
+    width: 72, textAlign: 'center' as const,
+  };
+  const sepStyle = { fontSize: 26, fontWeight: '800' as const, color: colors.secondary, marginBottom: 18 };
+  const subStyle = { fontSize: 11, color: colors.textLight, marginTop: 4 };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -517,23 +529,20 @@ export default function HistoryScreen() {
             <Text style={{ fontSize: 16, fontWeight: '800', color: colors.secondary, marginBottom: 18, textAlign: 'center' }}>
               ✏️ {fr ? 'Modifier la durée' : 'Edit duration'}
             </Text>
-            <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}>
+            <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}>
               <View style={{ alignItems: 'center' }}>
-                <TextInput
-                  value={editMin} onChangeText={setEditMin} keyboardType="number-pad"
-                  style={{ backgroundColor: colors.lightGray, borderRadius: 12, padding: 12, fontSize: 28, fontWeight: '800', color: colors.secondary, width: 80, textAlign: 'center' }}
-                  maxLength={5}
-                />
-                <Text style={{ fontSize: 11, color: colors.textLight, marginTop: 4 }}>{fr ? 'minutes' : 'minutes'}</Text>
+                <TextInput value={editHour} onChangeText={setEditHour} keyboardType="number-pad" style={inputStyle} maxLength={4} />
+                <Text style={subStyle}>{fr ? 'heures' : 'hours'}</Text>
               </View>
-              <Text style={{ fontSize: 28, fontWeight: '800', color: colors.secondary, marginBottom: 18 }}>:</Text>
+              <Text style={sepStyle}>:</Text>
               <View style={{ alignItems: 'center' }}>
-                <TextInput
-                  value={editSec} onChangeText={setEditSec} keyboardType="number-pad"
-                  style={{ backgroundColor: colors.lightGray, borderRadius: 12, padding: 12, fontSize: 28, fontWeight: '800', color: colors.secondary, width: 80, textAlign: 'center' }}
-                  maxLength={2}
-                />
-                <Text style={{ fontSize: 11, color: colors.textLight, marginTop: 4 }}>{fr ? 'secondes' : 'seconds'}</Text>
+                <TextInput value={editMin} onChangeText={setEditMin} keyboardType="number-pad" style={inputStyle} maxLength={2} />
+                <Text style={subStyle}>{fr ? 'min' : 'min'}</Text>
+              </View>
+              <Text style={sepStyle}>:</Text>
+              <View style={{ alignItems: 'center' }}>
+                <TextInput value={editSec} onChangeText={setEditSec} keyboardType="number-pad" style={inputStyle} maxLength={2} />
+                <Text style={subStyle}>{fr ? 'sec' : 'sec'}</Text>
               </View>
             </View>
             <View style={{ flexDirection: 'row', gap: 10 }}>
