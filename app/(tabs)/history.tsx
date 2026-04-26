@@ -495,10 +495,9 @@ export default function HistoryScreen() {
   };
 
   const handleEditOpen = (session: PoopSession) => {
-    const cur = session.duration ?? 0;
-    setEditHour(String(Math.floor(cur / 3600)));
-    setEditMin(String(Math.floor((cur % 3600) / 60)));
-    setEditSec(String(cur % 60));
+    setEditHour('');
+    setEditMin('');
+    setEditSec('');
     setEditingSession(session);
   };
 
