@@ -64,9 +64,9 @@ export async function sendPushNotification(
   expoPushToken: string,
   title: string,
   body: string,
-): Promise<void> {
+): Promise<{ ok: boolean; error?: string }> {
   try {
-    await fetch('https://exp.host/--/api/v2/push/send', {
+    const res = await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -83,7 +83,13 @@ export async function sendPushNotification(
         _displayInForeground: true,
       }),
     });
-  } catch {
-    // Silently fail
+    const json = await res.json();
+    const ticket = json?.data?.[0];
+    if (ticket?.status === 'error') {
+      return { ok: false, error: ticket.message ?? ticket.details?.error ?? 'Unknown error' };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e) };
   }
 }

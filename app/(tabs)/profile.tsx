@@ -8,6 +8,8 @@ import {
   Alert,
   Share,
   ScrollView,
+  Linking,
+  Platform,
 } from 'react-native';
 import { useAuth } from '@/lib/auth-context';
 import { useColors } from '@/lib/useColors';
@@ -55,10 +57,12 @@ export default function ProfileScreen() {
     }
     setNotifLoading(true);
     try {
-      await sendPushNotification(userProfile.pushToken, '🧪 Test', fr ? 'Tu reçois bien les notifs !' : 'Notifications work!');
-      Alert.alert('📤', fr ? 'Notif envoyée ! Ferme l\'app et attends.' : 'Sent! Close the app and wait.');
-    } catch {
-      Alert.alert('❌', fr ? 'Erreur envoi' : 'Send error');
+      const result = await sendPushNotification(userProfile.pushToken, '🧪 Test', fr ? 'Tu reçois bien les notifs !' : 'Notifications work!');
+      if (result.ok) {
+        Alert.alert('📤', fr ? 'Envoyée ! Ferme l\'app et attends quelques secondes.' : 'Sent! Close the app and wait a few seconds.');
+      } else {
+        Alert.alert('❌ Expo API', result.error ?? (fr ? 'Erreur inconnue' : 'Unknown error'));
+      }
     } finally {
       setNotifLoading(false);
     }
@@ -225,6 +229,23 @@ export default function ProfileScreen() {
                 {fr ? '🧪 Tester une notification' : '🧪 Test notification'}
               </Text>
             </TouchableOpacity>
+            {Platform.OS === 'android' && (
+              <TouchableOpacity
+                style={[styles.actionBtn, { backgroundColor: '#E67E22' }]}
+                onPress={() => Linking.openSettings()}
+              >
+                <Text style={styles.actionBtnText}>
+                  {fr ? '⚡ Paramètres batterie / appli' : '⚡ Battery / app settings'}
+                </Text>
+              </TouchableOpacity>
+            )}
+            {Platform.OS === 'android' && (
+              <Text style={{ fontSize: 12, color: colors.textLight, lineHeight: 18 }}>
+                {fr
+                  ? 'Si les notifs ne marchent pas app fermée → Batterie → Sans restriction. Sur Xiaomi : activer aussi "Démarrage automatique".'
+                  : 'If notifications fail when app is closed → Battery → Unrestricted. On Xiaomi: also enable "Autostart".'}
+              </Text>
+            )}
           </View>
         </View>
 
